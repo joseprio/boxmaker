@@ -1,0 +1,71 @@
+# BoxMaker
+
+A 100% client-side generator for laser-cut boxes, in the spirit of MakerCase but built on the
+geometry model of [boxes.py](https://github.com/florianfesti/boxes) by Florian Festi.
+
+Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. No server, no uploads.
+
+## Features
+
+- **Catalog with 3D previews.** Each generator is rendered from three angles at build-defaults;
+  hover or tap the thumbnails to switch viewpoint.
+- **Live 3D preview.** Every option applies immediately to a real assembled model — each part
+  knows where it sits in 3D space, so you see the actual box, not an approximation.
+- **Explode slider** to inspect how the parts fit together, plus a **sheet view** of the packed
+  cutting layout.
+- **SVG and DXF export** with kerf (burn) compensation.
+- **Shareable URLs.** Every option is stored in the URL, so a configured box is a link.
+- **Responsive.** Works on phones (stacked preview + options), tablets and desktop.
+
+## Generators
+
+| Generator | What it is |
+| --- | --- |
+| Universal Box | Open/closed/stackable box with flat, over-the-top or on-top lids and handles |
+| Closed Box | Fully closed box; a building block to cut open yourself |
+| Open Box | The simplest tray-like box |
+| Type Tray | Grid of compartments with interlocking dividers and finger cut-outs |
+| Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
+| Regular Box | Box with a regular polygon base (triangle → hexadecagon) |
+| Display Shelf | Slanted shelves with front lips and dividers |
+| Stackable Bin | Open bin with a slanted front that stacks on its siblings |
+| Uneven Height Box | Different height at each corner, with a matching lid |
+
+## Development
+
+```bash
+npm install
+npm run dev      # dev server
+npm test         # geometry tests
+npm run build    # static build into dist/
+```
+
+The build output in `dist/` is fully static — drop it on any static host. `base` is set to `./`
+and routing uses hash URLs, so it also works from a subdirectory or from `file://`.
+
+## How it works
+
+`src/engine/` is a TypeScript port of the parts of boxes.py that matter for box generation:
+
+- `turtle.ts` — the turtle-graphics drawing context (move, edge, corner/arc), mirroring the
+  cairo-based one upstream.
+- `edges.ts` — edge types: finger joints and their counterparts, finger holes, stackable feet,
+  slotted and compound edges, grip cut-outs. The finger-count and finger-length maths is a direct
+  port, so joints match upstream output.
+- `boxes.ts` — the `Boxes` base class: `rectangularWall`, `trapezoidWall`, `polygonWall`,
+  `regularPolygonWall`, holes, and the sizing helpers (`adjustSize`).
+- `lids.ts` — the lid styles and handles from `boxes/lids.py`.
+- `layout.ts` / `export.ts` — shelf packing of the parts plus SVG/DXF writers.
+
+The one real addition over upstream is **placement**: each part carries an optional origin and two
+basis vectors saying where it sits in box space. That is what makes the 3D preview exact rather
+than inferred — the viewer extrudes each part's outline by the material thickness and puts it
+where the generator said it goes.
+
+Generators live in `src/generators/` and are plain data: a list of parameter groups plus a `build`
+function that returns parts. Adding one means adding a file and an entry in `src/generators/index.ts`.
+
+## Licence
+
+The geometry engine is derived from boxes.py, which is GPL-3.0. This project is therefore also
+GPL-3.0.
