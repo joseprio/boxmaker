@@ -738,3 +738,67 @@ export class CabinetHingeEdge extends BaseEdge {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Mounting holes (boxes.py MountingEdge, "straight edge, within" style)
+// ---------------------------------------------------------------------------
+
+export interface MountingParams {
+  /** number of holes */
+  num: number;
+  /** space kept free at each end, as a fraction of the edge length */
+  margin: number;
+  /** screw shaft diameter in mm */
+  d_shaft: number;
+  /** screw head diameter in mm (0 for plain round holes) */
+  d_head: number;
+}
+
+/** Straight edge with pear shaped holes just inside it, for hanging the part on screws ('G'). */
+export class MountingEdge extends BaseEdge {
+  readonly char = 'G';
+  readonly description = 'Edge with mounting holes';
+
+  constructor(
+    boxes: Boxes,
+    public settings: MountingParams,
+  ) {
+    super(boxes);
+  }
+
+  draw(length: number): void {
+    if (length === 0) return;
+    const t = this.boxes.thickness;
+    const { margin, d_shaft: ds, d_head: dh } = this.settings;
+    const width = dh > 0 ? 3 * t + dh : ds;
+    let count = Math.max(1, Math.round(this.settings.num));
+    let margin_ = 0;
+    let gap = 0;
+    if (count > 1) {
+      margin_ = length * margin;
+      gap = (length - 2 * margin_ - width * count) / (count - 1);
+      if (gap < width) {
+        // upstream's fallback: fewer holes when they do not fit
+        count = Math.floor((length - 2 * margin + width) / (2 * width) - 0.5);
+        if (count < 1) {
+          this.boxes.edge(length);
+          return;
+        }
+        if (count < 2) {
+          margin_ = (length - width) / 2;
+          gap = 0;
+        } else {
+          gap = (length - 2 * margin_ - width * count) / (count - 1);
+        }
+      }
+    } else {
+      margin_ = (length - width) / 2;
+    }
+    let x = margin_;
+    for (let i = 0; i < count; i++) {
+      x += width / 2;
+      this.boxes.mountingHole(x, ds / 2 + t * 1.5, ds, dh, -90);
+      x += width / 2 + gap;
+    }
+    this.boxes.edge(length);
+  }
+}

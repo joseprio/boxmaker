@@ -7,6 +7,8 @@ import { flexBox } from './flexbox';
 import { hingeBox } from './hingebox';
 import { hingeCardBox } from './hingecardbox';
 import { integratedHingeBox } from './integratedhingebox';
+import { magazineFile } from './magazinefile';
+import { penHolderBox } from './penholderbox';
 import { dividerTray } from './dividertray';
 import type { GeneratorDef } from './types';
 import { regularBox } from './regularbox';
@@ -27,6 +29,7 @@ export const generators: GeneratorDef[] = [
   typeTray,
   dividerTray,
   trayInsert,
+  penHolderBox,
   cardBox,
   hingeCardBox,
   slidingLidBox,
@@ -41,6 +44,7 @@ export const generators: GeneratorDef[] = [
   displayShelf,
   stackableBin,
   binTray,
+  magazineFile,
   unevenHeightBox,
 ];
 

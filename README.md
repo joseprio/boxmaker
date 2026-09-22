@@ -15,8 +15,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
   cutting layout.
 - **SVG and DXF export** with kerf (burn) compensation. Engraving goes to its own red group / `ENGRAVE`
   layer; flex cuts are cut lines.
-- **Floor thickness** (Universal, Closed and Open Box): cut the floor from thicker or thinner material;
-  the walls' bottom joints follow it.
+- **Floor thickness** (Universal, Closed, Open, Pen Holder and Magazine File): cut the floor from thicker
+  or thinner material; the walls' bottom joints follow it.
 - **One sheet per material thickness**: parts of different thicknesses are laid out and exported
   separately (`<box>-3mm.svg`, `<box>-6mm.svg`, ...).
 - **Engraved rows** (Universal, Closed and Open Box): bands of a set width and spacing on the inside of
@@ -35,6 +35,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Open Box | The simplest tray-like box |
 | Type Tray | Grid of compartments with interlocking dividers and finger cut-outs |
 | Divider Tray | Slotted side pieces holding removable (optionally leaning) dividers |
+| Pen Holder Box | Two plates of pen holes, one under the rim and one lower down, with engraved cap rings |
 | Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
 | Card Box | Playing card box with a sliding lid and finger notches |
 | Hinge Card Box | Card box with a separate lid on its own cabinet hinge for every deck; optional engraved numbers |
@@ -49,6 +50,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Flex Box | Living-hinge box whose wall wraps round to form the lid, closed with a latch |
 | Display Shelf | Slanted shelves with front lips and dividers |
 | Stackable Bin | Open bin with a slanted front that stacks on its siblings |
+| Magazine File | Tall at the back, low at the front, sides curving between; optional wall mounting holes |
 | Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
 | Uneven Height Box | Different height at each corner, with a matching lid |
 
