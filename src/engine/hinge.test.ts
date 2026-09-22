@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hingeBox } from '../generators/hingebox';
+import { hingeCardBox } from '../generators/hingecardbox';
 import { integratedHingeBox } from '../generators/integratedhingebox';
 import { pirateChest } from '../generators/piratechest';
 import { sideHingeBox } from '../generators/sidehingebox';
@@ -141,6 +142,47 @@ describe('side hinge box', () => {
           expect(pin.min.z).toBeCloseTo(s.z0, 6);
           expect(pin.max.z).toBeCloseTo(s.z1, 6);
         }
+      }
+    });
+  }
+});
+
+describe('hinge card box', () => {
+  for (const o of [{}, { lid_open: 70, open_lid: 2 }, { sx: [40, 90], fingerhole: 'none', hinge_count: 2 }, { outside: true, fingerhole: 'deep' }]) {
+    it(`each lid has its own hinge on the pin axis ${JSON.stringify(o)}`, () => {
+      const m = build(hingeCardBox, o);
+      checkOutlines(m.parts);
+      const lidTops = m.parts.filter((p) => /^lid \d+ top$/.test(p.label));
+      const n = ((o as { sx?: number[] }).sx ?? [65, 65, 65, 65]).length;
+      expect(lidTops).toHaveLength(n);
+      const e = 1.5 * t;
+      const y = (o as { outside?: boolean }).outside ? 68 - 2 * t : 68;
+      const h = (o as { outside?: boolean }).outside ? 92 - 2 * t : 92;
+      // lid outlines (closed ones) must not overlap their neighbours
+      const spans: Array<[number, number]> = [];
+      for (let i = 1; i <= n; i++) {
+        const lid = modelBounds(m.parts.filter((p) => p.label === `lid ${i} top`));
+        spans.push([lid.min.x, lid.max.x]);
+        const eyes = m.parts.filter((p) => p.label.startsWith(`lid ${i} hinge eye`));
+        expect(eyes.length).toBeGreaterThan(0);
+        for (const eye of eyes) {
+          for (const z of [0, t]) {
+            const bore = placePoint(eye.placement!, 0, e, z);
+            expect(bore.y, eye.label).toBeCloseTo(y + t, 6);
+            expect(bore.z, eye.label).toBeCloseTo(h, 6);
+            // every eye of this lid's hinge sits under this lid
+            expect(bore.x).toBeGreaterThan(lid.min.x);
+            expect(bore.x).toBeLessThan(lid.max.x);
+          }
+        }
+      }
+      if (!(o as { lid_open?: number }).lid_open) {
+        // neighbouring lids are separated by twice the lid gap
+        for (let i = 1; i < spans.length; i++) expect(spans[i][0] - spans[i - 1][1]).toBeCloseTo(2 * 0.5, 6);
+        // and the outer lids are flush with the box's outer faces
+        const box = modelBounds(m.parts.filter((p) => ['left side', 'right side'].includes(p.label)));
+        expect(spans[0][0]).toBeCloseTo(box.min.x, 6);
+        expect(spans[spans.length - 1][1]).toBeCloseTo(box.max.x, 6);
       }
     });
   }

@@ -5,6 +5,7 @@ import { closedBox } from './closedbox';
 import { displayShelf } from './displayshelf';
 import { flexBox } from './flexbox';
 import { hingeBox } from './hingebox';
+import { hingeCardBox } from './hingecardbox';
 import { integratedHingeBox } from './integratedhingebox';
 import { dividerTray } from './dividertray';
 import type { GeneratorDef } from './types';
@@ -27,6 +28,7 @@ export const generators: GeneratorDef[] = [
   dividerTray,
   trayInsert,
   cardBox,
+  hingeCardBox,
   slidingLidBox,
   hingeBox,
   integratedHingeBox,

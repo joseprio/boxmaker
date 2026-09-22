@@ -16,7 +16,7 @@ class InsetEdge extends BaseEdge {
 }
 
 /** Edge with a deep rounded notch to get your fingers around the cards ('A'). */
-class CardGripEdge extends BaseEdge {
+export class CardGripEdge extends BaseEdge {
   readonly char = 'A';
   readonly description = 'Edge with a finger notch';
 

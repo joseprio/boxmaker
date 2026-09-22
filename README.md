@@ -28,6 +28,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Divider Tray | Slotted side pieces holding removable (optionally leaning) dividers |
 | Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
 | Card Box | Playing card box with a sliding lid and finger notches |
+| Hinge Card Box | Card box with a separate lid on its own cabinet hinge for every deck |
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
 | Hinge Box | Lid on laser-cut cabinet hinges turning on a metal pin; optional split lid |
 | Integrated Hinge Box | Lid pivoting on pins cut into its back wall, no hardware |
