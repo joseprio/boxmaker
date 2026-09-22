@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { OrbitControls as ThreeOrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { BoxModel } from '../generators/types';
-import { buildModelGroup, disposeGroup, modelRadius } from './buildScene';
+import { applyExplode, buildModelGroup, disposeGroup, modelRadius } from './buildScene';
 
 interface Props {
   model: BoxModel;
@@ -11,8 +11,10 @@ interface Props {
 }
 
 function Model({ model, explode }: { model: BoxModel; explode: number }) {
-  const group = useMemo(() => buildModelGroup(model, { explode }), [model, explode]);
+  // geometry is built once per model; exploding only moves the meshes
+  const group = useMemo(() => buildModelGroup(model), [model]);
   useEffect(() => () => disposeGroup(group), [group]);
+  useEffect(() => applyExplode(group, explode), [group, explode]);
   return <primitive object={group} />;
 }
 

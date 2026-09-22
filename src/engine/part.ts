@@ -31,35 +31,61 @@ type V3 = { x: number; y: number; z: number };
 const add = (a: V3, b: V3, s: number): V3 => ({ x: a.x + b.x * s, y: a.y + b.y * s, z: a.z + b.z * s });
 const cross = (a: V3, b: V3): V3 => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
 
-/** Frame (position and in-plane axes) at local x along a placement's path. */
-export function pathFrame(p: Placement, x: number): { pos: V3; dir: V3; normal: V3 } {
-  let pos: V3 = { ...p.origin };
-  let dir: V3 = p.u;
-  let normal = cross(p.u, p.v);
-  let rest = x;
+interface Frame {
+  pos: V3;
+  dir: V3;
+  normal: V3;
+}
+
+/** Advance a frame by `l` of local x through one path segment. */
+function advance(f: Frame, v: V3, seg: PathSegment, l: number): Frame {
+  if (!seg.angle || seg.radius === undefined) return { pos: add(f.pos, f.dir, l), dir: f.dir, normal: f.normal };
+  const a = ((seg.angle * Math.PI) / 180) * (l / seg.length);
+  // turning about v: the centre lies on the -normal side for a positive angle
+  const sign = Math.sign(seg.angle);
+  const c = add(f.pos, f.normal, -seg.radius * sign);
+  const ca = Math.cos(a);
+  const sa = Math.sin(a);
+  const rot = (w: V3): V3 => add(add(add({ x: 0, y: 0, z: 0 }, w, ca), cross(v, w), sa), v, (v.x * w.x + v.y * w.y + v.z * w.z) * (1 - ca));
+  const normal = rot(f.normal);
+  return { pos: add(c, normal, seg.radius * sign), dir: rot(f.dir), normal };
+}
+
+/** Frames at the start of each path segment, cached per placement. */
+const segmentStarts = new WeakMap<Placement, Array<{ x0: number; frame: Frame }>>();
+
+function starts(p: Placement): Array<{ x0: number; frame: Frame }> {
+  let s = segmentStarts.get(p);
+  if (s) return s;
+  s = [];
+  let frame: Frame = { pos: { ...p.origin }, dir: p.u, normal: cross(p.u, p.v) };
+  let x0 = 0;
   for (const seg of p.path ?? []) {
-    if (rest <= 0) break;
-    const l = Math.min(rest, seg.length);
-    if (seg.angle && seg.radius !== undefined) {
-      const a = ((seg.angle * Math.PI) / 180) * (l / seg.length);
-      // turning about v: the centre lies on the -normal side for a positive angle
-      const r = seg.radius;
-      const c = add(pos, normal, -r * Math.sign(seg.angle));
-      const ca = Math.cos(a);
-      const sa = Math.sin(a);
-      const rel = add({ x: 0, y: 0, z: 0 }, normal, r * Math.sign(seg.angle));
-      // rotate rel and dir about v by a
-      const rot = (w: V3): V3 => add(add(add({ x: 0, y: 0, z: 0 }, w, ca), cross(p.v, w), sa), p.v, (p.v.x * w.x + p.v.y * w.y + p.v.z * w.z) * (1 - ca));
-      pos = add(c, rot(rel), 1);
-      dir = rot(dir);
-      normal = rot(normal);
-    } else {
-      pos = add(pos, dir, l);
-    }
-    rest -= seg.length;
+    s.push({ x0, frame });
+    frame = advance(frame, p.v, seg, seg.length);
+    x0 += seg.length;
   }
-  if (rest > 0) pos = add(pos, dir, rest);
-  return { pos, dir, normal };
+  s.push({ x0, frame });
+  segmentStarts.set(p, s);
+  return s;
+}
+
+/** Frame (position and in-plane axes) at local x along a placement's path. */
+export function pathFrame(p: Placement, x: number): Frame {
+  const path = p.path ?? [];
+  const st = starts(p);
+  if (x <= 0 || path.length === 0) {
+    const f = st[0].frame;
+    return x < 0 ? { ...f, pos: add(f.pos, f.dir, x) } : f;
+  }
+  let i = 0;
+  while (i < path.length && x > st[i + 1].x0) i++;
+  // past the end the part continues straight
+  if (i === path.length) {
+    const f = st[i].frame;
+    return { pos: add(f.pos, f.dir, x - st[i].x0), dir: f.dir, normal: f.normal };
+  }
+  return advance(st[i].frame, p.v, path[i], x - st[i].x0);
 }
 
 /** Map a part-local point (x, y on the sheet, z through the thickness) into box space. */

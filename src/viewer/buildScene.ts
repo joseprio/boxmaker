@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { bendStations, placePoint, type Part, type Placement } from '../engine/part';
+import { bendStations, pathFrame, type Part, type Placement } from '../engine/part';
 import type { BoxModel } from '../generators/types';
 
 export const GROUP_COLORS: Record<string, string> = {
@@ -64,75 +64,122 @@ export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
   return geo;
 }
 
-type P3 = [number, number, number];
-
-/** Split triangles (non-indexed positions) along the plane x = c. */
-function splitTriangles(pos: number[], c: number): number[] {
-  const out: number[] = [];
-  const eps = 1e-9;
-  for (let i = 0; i < pos.length; i += 9) {
-    const tri: P3[] = [
-      [pos[i], pos[i + 1], pos[i + 2]],
-      [pos[i + 3], pos[i + 4], pos[i + 5]],
-      [pos[i + 6], pos[i + 7], pos[i + 8]],
-    ];
-    const d = tri.map((p) => p[0] - c);
-    if (Math.max(...d) <= eps || Math.min(...d) >= -eps) {
-      out.push(...tri.flat());
-      continue;
-    }
-    // clip the triangle into the two sides of the plane, keeping the winding
-    for (const side of [-1, 1]) {
-      const poly: P3[] = [];
-      for (let k = 0; k < 3; k++) {
-        const a = tri[k];
-        const b = tri[(k + 1) % 3];
-        const da = d[k] * side;
-        const db = d[(k + 1) % 3] * side;
-        if (da >= 0) poly.push(a);
-        if ((da > 0 && db < 0) || (da < 0 && db > 0)) {
-          const f = da / (da - db);
-          poly.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-        }
-      }
-      for (let k = 1; k + 1 < poly.length; k++) out.push(...poly[0], ...poly[k], ...poly[k + 1]);
-    }
+/** First index in the sorted list with value > x. */
+function upperBound(xs: number[], x: number): number {
+  let lo = 0;
+  let hi = xs.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid] <= x) lo = mid + 1;
+    else hi = mid;
   }
-  return out;
+  return lo;
 }
 
-/** Split line segments (pairs of points) at the plane x = c. */
-function splitSegments(pos: number[], c: number): number[] {
-  const out: number[] = [];
-  for (let i = 0; i < pos.length; i += 6) {
-    const a = pos.slice(i, i + 3);
-    const b = pos.slice(i + 3, i + 6);
-    const da = a[0] - c;
-    const db = b[0] - c;
-    if ((da > 1e-9 && db < -1e-9) || (da < -1e-9 && db > 1e-9)) {
-      const f = da / (da - db);
-      const m = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-      out.push(...a, ...m, ...m, ...b);
-    } else {
-      out.push(...a, ...b);
+/**
+ * Cut triangles (non-indexed xyz triples) at every station x they straddle.
+ * Each triangle is clipped only against the stations inside its own x range,
+ * slab by slab, so the work is proportional to the output.
+ */
+function splitTriangles(pos: ArrayLike<number>, stations: number[], out: number[]): void {
+  const eps = 1e-9;
+  let poly: number[] = [];
+  let right: number[] = [];
+  const fan = (pts: number[]) => {
+    for (let k = 3; k + 3 < pts.length; k += 3) {
+      out.push(pts[0], pts[1], pts[2], pts[k], pts[k + 1], pts[k + 2], pts[k + 3], pts[k + 4], pts[k + 5]);
     }
+  };
+  for (let i = 0; i < pos.length; i += 9) {
+    const x0 = Math.min(pos[i], pos[i + 3], pos[i + 6]);
+    const x1 = Math.max(pos[i], pos[i + 3], pos[i + 6]);
+    let j = upperBound(stations, x0 + eps);
+    if (j >= stations.length || stations[j] >= x1 - eps) {
+      for (let k = 0; k < 9; k++) out.push(pos[i + k]);
+      continue;
+    }
+    poly = [pos[i], pos[i + 1], pos[i + 2], pos[i + 3], pos[i + 4], pos[i + 5], pos[i + 6], pos[i + 7], pos[i + 8]];
+    for (; j < stations.length && stations[j] < x1 - eps; j++) {
+      const c = stations[j];
+      const left: number[] = [];
+      right = [];
+      const n = poly.length / 3;
+      for (let k = 0; k < n; k++) {
+        const a = k * 3;
+        const b = ((k + 1) % n) * 3;
+        const da = poly[a] - c;
+        const db = poly[b] - c;
+        if (da <= 0) left.push(poly[a], poly[a + 1], poly[a + 2]);
+        if (da >= 0) right.push(poly[a], poly[a + 1], poly[a + 2]);
+        if ((da < 0 && db > 0) || (da > 0 && db < 0)) {
+          const f = da / (da - db);
+          const q = [poly[a] + (poly[b] - poly[a]) * f, poly[a + 1] + (poly[b + 1] - poly[a + 1]) * f, poly[a + 2] + (poly[b + 2] - poly[a + 2]) * f];
+          left.push(q[0], q[1], q[2]);
+          right.push(q[0], q[1], q[2]);
+        }
+      }
+      if (left.length >= 9) fan(left);
+      poly = right;
+      if (poly.length < 9) break;
+    }
+    if (poly.length >= 9) fan(poly);
   }
-  return out;
+}
+
+/** Split line segments (pairs of xyz points) at every station they straddle. */
+function splitSegments(pos: ArrayLike<number>, stations: number[], out: number[]): void {
+  const eps = 1e-9;
+  for (let i = 0; i < pos.length; i += 6) {
+    let ax = pos[i];
+    let ay = pos[i + 1];
+    let az = pos[i + 2];
+    const bx = pos[i + 3];
+    const by = pos[i + 4];
+    const bz = pos[i + 5];
+    const lo = Math.min(ax, bx);
+    const hi = Math.max(ax, bx);
+    const cuts: number[] = [];
+    for (let j = upperBound(stations, lo + eps); j < stations.length && stations[j] < hi - eps; j++) cuts.push(stations[j]);
+    if (bx < ax) cuts.reverse();
+    for (const c of cuts) {
+      const f = (c - ax) / (bx - ax);
+      const mx = c;
+      const my = ay + (by - ay) * f;
+      const mz = az + (bz - az) * f;
+      out.push(ax, ay, az, mx, my, mz);
+      ax = mx;
+      ay = my;
+      az = mz;
+    }
+    out.push(ax, ay, az, bx, by, bz);
+  }
 }
 
 /** Subdivide a local-space geometry across the bends and map it into box space. */
 function bendGeometry(geo: THREE.BufferGeometry, placement: Placement, triangles: boolean): THREE.BufferGeometry {
   const src = geo.index ? geo.toNonIndexed() : geo;
-  let pos = Array.from(src.getAttribute('position').array as ArrayLike<number>);
-  for (const c of bendStations(placement)) pos = triangles ? splitTriangles(pos, c) : splitSegments(pos, c);
+  const stations = [...new Set(bendStations(placement))].sort((a, b) => a - b);
+  const pos: number[] = [];
+  if (triangles) splitTriangles(src.getAttribute('position').array, stations, pos);
+  else splitSegments(src.getAttribute('position').array, stations, pos);
+  // most vertices sit on a few station lines: compute each x's frame once
+  const frames = new Map<number, ReturnType<typeof pathFrame>>();
+  const v = placement.v;
+  const arr = new Float32Array(pos.length);
   for (let i = 0; i < pos.length; i += 3) {
-    const q = placePoint(placement, pos[i], pos[i + 1], pos[i + 2]);
-    pos[i] = q.x;
-    pos[i + 1] = q.y;
-    pos[i + 2] = q.z;
+    let f = frames.get(pos[i]);
+    if (!f) {
+      f = pathFrame(placement, pos[i]);
+      frames.set(pos[i], f);
+    }
+    const y = pos[i + 1];
+    const z = pos[i + 2];
+    arr[i] = f.pos.x + v.x * y + f.normal.x * z;
+    arr[i + 1] = f.pos.y + v.y * y + f.normal.y * z;
+    arr[i + 2] = f.pos.z + v.z * y + f.normal.z * z;
   }
   const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('position', new THREE.BufferAttribute(arr, 3));
   if (triangles) out.computeVertexNormals();
   return out;
 }
@@ -187,30 +234,42 @@ export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE
   }
 
   box.getCenter(center);
-  if (explode > 0) {
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    const amount = explode * Math.max(size.x, size.y, size.z) * 0.5;
-    for (const mesh of meshes) {
-      const part = mesh.userData.part as Part;
-      // bent walls wrap around the model: they stay put
-      if (part.placement?.path?.length) continue;
-      const m = placementMatrix(part.placement as Placement);
-      const normal = new THREE.Vector3().setFromMatrixColumn(m, 2);
-      // move parts outward from the model centre along their normal direction
-      const partCenter = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-      const dir = partCenter.clone().sub(center);
-      const sign = dir.dot(normal) >= 0 ? 1 : -1;
-      mesh.position.add(normal.multiplyScalar(sign * amount));
-    }
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const reach = Math.max(size.x, size.y, size.z) * 0.5;
+  for (const mesh of meshes) {
+    const part = mesh.userData.part as Part;
+    mesh.userData.basePosition = mesh.position.clone();
+    // bent walls wrap around the model: they stay put
+    if (part.placement?.path?.length) continue;
+    const m = placementMatrix(part.placement as Placement);
+    const normal = new THREE.Vector3().setFromMatrixColumn(m, 2);
+    // move parts outward from the model centre along their normal direction
+    const partCenter = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+    const sign = partCenter.clone().sub(center).dot(normal) >= 0 ? 1 : -1;
+    mesh.userData.explodeOffset = normal.multiplyScalar(sign * reach);
   }
+  group.userData.meshes = meshes;
+  applyExplode(group, explode);
 
   group.position.sub(center);
   // box space is Z-up; three.js is Y-up
   const wrapper = new THREE.Group();
   wrapper.add(group);
   wrapper.rotation.x = -Math.PI / 2;
+  wrapper.userData.inner = group;
   return wrapper;
+}
+
+/** Move the parts of a built model apart (0..1) without rebuilding any geometry. */
+export function applyExplode(obj: THREE.Object3D, explode: number): void {
+  const group = (obj.userData.inner as THREE.Group | undefined) ?? obj;
+  for (const mesh of (group.userData.meshes as THREE.Mesh[] | undefined) ?? []) {
+    const base = mesh.userData.basePosition as THREE.Vector3;
+    const off = mesh.userData.explodeOffset as THREE.Vector3 | undefined;
+    mesh.position.copy(base);
+    if (off && explode > 0) mesh.position.addScaledVector(off, explode);
+  }
 }
 
 export function disposeGroup(obj: THREE.Object3D): void {
