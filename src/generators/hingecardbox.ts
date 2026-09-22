@@ -1,5 +1,6 @@
-import { Boxes, CompoundEdge, place, type EdgeSpec } from '../engine/boxes';
+import { Boxes, CompoundEdge, place, type EdgeSpec, type EngraveStyle } from '../engine/boxes';
 import { rotatePlacement, type Placement } from '../engine/part';
+import { maxOutlineWidth, textWidth } from '../engine/text';
 import { CardGripEdge } from './cardbox';
 import { fingerJointGroup, fingerJointParams, materialGroup, outsideParam } from './common';
 import { addCabinetHingeEyes, addCabinetHinges, cabinetHingeGroup, cabinetHingeSettings } from './hingebox';
@@ -70,9 +71,28 @@ function build(v: ParamValues): BoxModel {
   types.push('e');
   lengths.push(cur);
 
+  // engraved numbers ------------------------------------------------------------
+  const numTop = bool(v, 'num_top');
+  const numFront = str(v, 'num_front');
+  const style = str(v, 'num_style') as EngraveStyle;
+  const label = (i: number) => String(Math.round(num(v, 'num_start')) + i);
+  /** Engrave compartment i's number centred at (cx, cy), shrunk to fit a w x hh face. */
+  const number = (i: number, cx: number, cy: number, w: number, hh: number) => {
+    const text = label(i);
+    let size = Math.min(num(v, 'num_height'), 0.7 * hh);
+    size = Math.min(size, (0.8 * w * size) / textWidth(text, size));
+    if (size < 2) return;
+    const lw = Math.min(num(v, 'num_line'), maxOutlineWidth(size));
+    b.engraveText(text, cx, cy, size, style, lw);
+  };
+
   // box ---------------------------------------------------------------------
   b.rectangularWall(x, y, 'ffff', { label: 'bottom', callback: [holes(y)], placement: place.plateXY(0, 0, -t) });
-  b.rectangularWall(x, h, 'FFeF', { label: 'front', callback: [holes(h)], placement: place.wallXZ(0, 0, 0) });
+  const frontNumbers = () => {
+    holes(h)();
+    if (numFront === 'box') sx.forEach((w, i) => number(i, starts[i] + w / 2, h / 2, w, h));
+  };
+  b.rectangularWall(x, h, 'FFeF', { label: 'front', callback: [frontNumbers], placement: place.wallXZ(0, 0, 0) });
   b.rectangularWall(x, h, ['F', 'F', new CompoundEdge(b, types, lengths), 'F'], { label: 'back', callback: [holes(h)], placement: place.wallXZ(0, y + t, 0) });
   b.rectangularWall(y, h, ['F', 'f', top, 'f'], { label: 'left side', placement: place.wallYZ(-t, 0, 0) });
   b.rectangularWall(y, h, ['F', 'f', top, 'f'], { label: 'right side', placement: place.wallYZ(x, 0, 0) });
@@ -89,8 +109,18 @@ function build(v: ParamValues): BoxModel {
     b.rectangularWall(lid.w, hl, 'UFFF', { label: `${n} back`, group: g, placement: turn({ origin: { x: lid.e, y, z: h }, u: neg(X), v: Z }) });
     b.rectangularWall(y, hl, 'efFf', { label: `${n} left`, group: g, placement: turn(place.wallYZ(lid.a - t, 0, h)) });
     b.rectangularWall(y, hl, 'efFf', { label: `${n} right`, group: g, placement: turn(place.wallYZ(lid.e, 0, h)) });
-    b.rectangularWall(lid.w, hl, 'eFFF', { label: `${n} front`, group: g, placement: turn(place.wallXZ(lid.a, 0, h)) });
-    b.rectangularWall(lid.w, y, 'ffff', { label: `${n} top`, group: g, placement: turn(place.plateXY(lid.a, 0, h + hl)) });
+    b.rectangularWall(lid.w, hl, 'eFFF', {
+      label: `${n} front`,
+      group: g,
+      callback: numFront === 'lid' ? [() => number(i, lid.w / 2, hl / 2, lid.w, hl)] : undefined,
+      placement: turn(place.wallXZ(lid.a, 0, h)),
+    });
+    b.rectangularWall(lid.w, y, 'ffff', {
+      label: `${n} top`,
+      group: g,
+      callback: numTop ? [() => number(i, lid.w / 2, y / 2, lid.w, y)] : undefined,
+      placement: turn(place.plateXY(lid.a, 0, h + hl)),
+    });
     addCabinetHingeEyes(b, hs, { edgeStartX: lid.e, length: lid.w, axisY: y + t, z: h, inward: 1, turn, label: `${n} hinge` });
   });
   return finishModel(b);
@@ -135,6 +165,38 @@ export const hingeCardBox: GeneratorDef = {
         { id: 'fingerhole_depth', label: 'Notch depth', type: 'number', default: 20, unit: 'mm', min: 10, max: 500, step: 1, showIf: (v) => v.fingerhole === 'custom' },
         lidOpenParam,
         { id: 'open_lid', label: 'Preview: which lid', type: 'number', default: 0, min: 0, max: 20, step: 1, help: '0 opens them all' },
+      ],
+    },
+    {
+      id: 'numbers',
+      title: 'Engraved numbers',
+      params: [
+        { id: 'num_top', label: 'On the lid tops', type: 'boolean', default: false },
+        {
+          id: 'num_front',
+          label: 'On the front',
+          type: 'select',
+          default: 'none',
+          options: [
+            { value: 'none', label: 'None' },
+            { value: 'box', label: 'Box front, under each lid' },
+            { value: 'lid', label: 'Front of each lid' },
+          ],
+        },
+        {
+          id: 'num_style',
+          label: 'Style',
+          type: 'select',
+          default: 'stroke',
+          options: [
+            { value: 'stroke', label: 'Single line (vector engrave or score)' },
+            { value: 'outline', label: 'Outlined (fill engrave)' },
+          ],
+          showIf: (v) => Boolean(v.num_top) || v.num_front !== 'none',
+        },
+        { id: 'num_height', label: 'Height', type: 'number', default: 15, unit: 'mm', min: 3, max: 200, step: 1, help: 'Shrunk to fit smaller faces', showIf: (v) => Boolean(v.num_top) || v.num_front !== 'none' },
+        { id: 'num_line', label: 'Line width', type: 'number', default: 1.5, unit: 'mm', min: 0.2, max: 20, step: 0.1, help: 'Stroke width of outlined digits (capped to keep them legible)', showIf: (v) => (Boolean(v.num_top) || v.num_front !== 'none') && v.num_style === 'outline' },
+        { id: 'num_start', label: 'First number', type: 'number', default: 1, min: 0, max: 9999, step: 1, help: 'For numbering several boxes in a row', showIf: (v) => Boolean(v.num_top) || v.num_front !== 'none' },
       ],
     },
     { ...cabinetHingeGroup, params: cabinetHingeGroup.params.map((p) => (p.id === 'hinge_count' ? { ...p, default: 1 } : p)) },

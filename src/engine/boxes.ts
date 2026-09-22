@@ -27,7 +27,10 @@ import {
   type FlexParams,
   type StackableParams,
 } from './settings';
+import { maxOutlineWidth, outlineStrokes, textStrokes } from './text';
 import { Turtle } from './turtle';
+
+export type EngraveStyle = 'stroke' | 'outline';
 
 export type EdgeSpec = string | BaseEdge;
 
@@ -162,6 +165,17 @@ export class Boxes {
 
   moveTo(x: number, y = 0, degrees = 0): void {
     this.turtle.moveTo(x, y, degrees);
+  }
+
+  /**
+   * Engrave `text` centred at (x, y) of the current frame, `height` mm tall:
+   * as single-line strokes, or as filled outlines `width` mm thick.
+   */
+  engraveText(text: string, x: number, y: number, height: number, style: EngraveStyle = 'stroke', width = 0): void {
+    // outline at the origin (the merge is most robust with small coordinates), then move into place
+    const strokes = textStrokes(text, height);
+    const paths = style === 'outline' ? outlineStrokes(strokes, width || maxOutlineWidth(height) * 0.8) : strokes;
+    for (const path of paths) this.turtle.etch(path.map((q) => ({ x: q.x + x, y: q.y + y })));
   }
 
   /** Current-frame point in part-local coordinates. */
@@ -362,7 +376,7 @@ export class Boxes {
       label: this.currentLabel,
       outline,
       holes,
-      openPaths: open,
+      openPaths: [...open, ...this.turtle.etches],
       cuts: this.turtle.cuts,
       thickness: this.thickness,
       placement,

@@ -37,13 +37,20 @@ export function toSVG(parts: Part[], opts: ExportOptions): string {
       const d = c.map((p, i) => `${i ? 'L' : 'M'}${fmt(p.x + pp.dx)} ${fmt(sheet.height - (p.y + pp.dy))}`).join(' ');
       lines.push(`      <path d="${d}"/>`);
     }
-    for (const op of pp.part.openPaths) {
-      const d = op.map((p, i) => `${i ? 'L' : 'M'}${fmt(p.x + pp.dx)} ${fmt(sheet.height - (p.y + pp.dy))}`).join(' ');
-      lines.push(`      <path stroke="#ff0000" d="${d}"/>`);
-    }
     lines.push(`    </g>`);
   }
   lines.push(`  </g>`);
+  // engraving in its own group and colour, so laser software can run it as a separate layer
+  if (parts.some((p) => p.openPaths.length)) {
+    lines.push(`  <g id="engrave" fill="none" stroke="#ff0000" stroke-width="0.1" stroke-linejoin="round">`);
+    for (const pp of sheet.parts) {
+      for (const op of pp.part.openPaths) {
+        const d = op.map((p, i) => `${i ? 'L' : 'M'}${fmt(p.x + pp.dx)} ${fmt(sheet.height - (p.y + pp.dy))}`).join(' ');
+        lines.push(`    <path d="${d}${isClosed(op) ? ' Z' : ''}"/>`);
+      }
+    }
+    lines.push(`  </g>`);
+  }
   if (opts.labels) {
     lines.push(`  <g id="labels" fill="#888" font-family="sans-serif" font-size="4">`);
     for (const pp of sheet.parts) {
@@ -56,6 +63,14 @@ export function toSVG(parts: Part[], opts: ExportOptions): string {
   }
   lines.push(`</svg>`);
   return lines.join('\n');
+}
+
+/** A path that comes back to its start (outline contours, loops like a '0'). */
+function isClosed(pts: Vec2[]): boolean {
+  if (pts.length < 3) return false;
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  return Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
 }
 
 function escapeXml(s: string): string {
@@ -93,6 +108,7 @@ export function toDXF(parts: Part[], opts: ExportOptions): string {
     poly(outline, pp.dx, pp.dy, 'CUT');
     for (const h of holes) poly(h, pp.dx, pp.dy, 'CUT_INNER');
     for (const c of pp.part.cuts) poly(c, pp.dx, pp.dy, 'CUT_INNER', false);
+    for (const e of pp.part.openPaths) poly(e, pp.dx, pp.dy, 'ENGRAVE', isClosed(e));
   }
   push(0, 'ENDSEC');
   push(0, 'EOF');

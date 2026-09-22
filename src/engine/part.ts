@@ -122,7 +122,10 @@ export interface Part {
   outline: Vec2[];
   /** Inner contours (holes). */
   holes: Vec2[][];
-  /** Open polylines (etchings, labels...) - exported to SVG only. */
+  /**
+   * Engraving (not cut through): open polylines, or closed contours (first
+   * point repeated at the end is not required) for fill engraving.
+   */
   openPaths: Vec2[][];
   /** Open cut lines inside the part (e.g. flex hinge cuts) - cut like contours. */
   cuts: Vec2[][];

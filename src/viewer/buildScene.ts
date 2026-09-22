@@ -53,8 +53,8 @@ export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
       if (la > 0 && lb > 0 && (ax * bx + ay * by) / (la * lb) < cosThreshold) pts.push(p.x, p.y, 0, p.x, p.y, t);
     }
   }
-  // flex cuts on both faces
-  for (const c of part.cuts) {
+  // flex cuts and engraving on both faces
+  for (const c of [...part.cuts, ...part.openPaths]) {
     for (let i = 0; i + 1 < c.length; i++) {
       for (const z of [0, t]) pts.push(c[i].x, c[i].y, z, c[i + 1].x, c[i + 1].y, z);
     }

@@ -20,6 +20,8 @@ export class Turtle {
   paths: Vec2[][] = [];
   /** Standalone cut lines (never joined with the contours). */
   cuts: Vec2[][] = [];
+  /** Engraving paths (never joined with the contours). */
+  etches: Vec2[][] = [];
   /** Arc flattening: max angle per segment in degrees. */
   arcStep = 7.5;
 
@@ -28,6 +30,12 @@ export class Turtle {
     this.stack = [];
     this.paths = [];
     this.cuts = [];
+    this.etches = [];
+  }
+
+  /** Add an engraving path given in the local frame. */
+  etch(pts: Vec2[]): void {
+    this.etches.push(pts.map((q) => this.local(q.x, q.y)));
   }
 
   /** Move the frame back to the part origin (keeps the drawn paths and the saved stack). */

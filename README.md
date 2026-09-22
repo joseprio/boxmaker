@@ -13,7 +13,10 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
   knows where it sits in 3D space, so you see the actual box, not an approximation.
 - **Explode slider** to inspect how the parts fit together, plus a **sheet view** of the packed
   cutting layout.
-- **SVG and DXF export** with kerf (burn) compensation.
+- **SVG and DXF export** with kerf (burn) compensation. Engraving goes to its own red group / `ENGRAVE`
+  layer; flex cuts are cut lines.
+- **Engraved numbers** (Hinge Card Box): single-line strokes for vector engraving or merged outlines for
+  fill engraving, from a small built-in digit font.
 - **Shareable URLs.** Every option is stored in the URL, so a configured box is a link.
 - **Responsive.** Works on phones (stacked preview + options), tablets and desktop.
 
@@ -28,7 +31,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Divider Tray | Slotted side pieces holding removable (optionally leaning) dividers |
 | Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
 | Card Box | Playing card box with a sliding lid and finger notches |
-| Hinge Card Box | Card box with a separate lid on its own cabinet hinge for every deck |
+| Hinge Card Box | Card box with a separate lid on its own cabinet hinge for every deck; optional engraved numbers |
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
 | Hinge Box | Lid on laser-cut cabinet hinges turning on a metal pin; optional split lid |
 | Integrated Hinge Box | Lid pivoting on pins cut into its back wall, no hardware |
