@@ -127,6 +127,12 @@ export interface Part {
    * point repeated at the end is not required) for fill engraving.
    */
   openPaths: Vec2[][];
+  /**
+   * Which face the engraving is meant for: the one facing into the box or out
+   * of it (the preview only draws it there). The part is laid out so either
+   * face can go up on the laser; unset shows it on both.
+   */
+  engraveFace?: 'inner' | 'outer';
   /** Open cut lines inside the part (e.g. flex hinge cuts) - cut like contours. */
   cuts: Vec2[][];
   thickness: number;

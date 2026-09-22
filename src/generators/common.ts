@@ -1,3 +1,4 @@
+import type { Boxes } from '../engine/boxes';
 import type { ParamDef, ParamGroup, ParamValues } from './types';
 import {
   defaultFingerJointParams,
@@ -120,4 +121,79 @@ export function flexParams(v: ParamValues): Partial<FlexParams> {
     if (val !== undefined) p[k] = Number(val);
   }
   return p;
+}
+
+const rowsOn = (v: ParamValues) => v.rows_sides !== undefined && v.rows_sides !== 'none';
+
+export const rowEngravingGroup: ParamGroup = {
+  id: 'rows',
+  title: 'Engraved rows',
+  collapsed: true,
+  params: [
+    {
+      id: 'rows_sides',
+      label: 'Walls',
+      type: 'select',
+      default: 'none',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'sides', label: 'Left and right' },
+        { value: 'frontback', label: 'Front and back' },
+      ],
+      help: 'Rows engraved on the inside of two opposite walls, e.g. guides for CDs or cards',
+    },
+    {
+      id: 'rows_dir',
+      label: 'Direction',
+      type: 'select',
+      default: 'vertical',
+      options: [
+        { value: 'vertical', label: 'Vertical (items standing side by side)' },
+        { value: 'horizontal', label: 'Horizontal (like shelves)' },
+      ],
+      showIf: rowsOn,
+    },
+    { id: 'rows_width', label: 'Row width', type: 'number', default: 1.5, unit: 'mm', min: 0, max: 100, step: 0.1, help: 'Width of each engraved band (0 for a single line)', showIf: rowsOn },
+    { id: 'rows_spacing', label: 'Spacing', type: 'number', default: 10.4, unit: 'mm', min: 0.5, max: 500, step: 0.1, help: 'Gap between neighbouring rows (10.4 mm fits CD jewel cases)', showIf: rowsOn },
+    { id: 'rows_margin', label: 'End margin', type: 'number', default: 5, unit: 'mm', min: 0, max: 500, step: 0.5, help: 'Kept free at each end; the rows are centred in what is left', showIf: rowsOn },
+    { id: 'rows_inset', label: 'Inset', type: 'number', default: 0, unit: 'mm', min: 0, max: 500, step: 0.5, help: 'How far each row stops short of the wall edges it runs towards', showIf: rowsOn },
+  ],
+};
+
+export interface RowEngraving {
+  /** which pair of opposite walls gets the rows */
+  sides: 'none' | 'sides' | 'frontback';
+  /** wall callback (frame at the wall's nominal bottom-left corner) for a wall `l` long and `h` high */
+  rows: (l: number, h: number) => () => void;
+}
+
+/**
+ * Rows engraved on a wall: bands `width` wide, `spacing` apart, as many as fit
+ * between the end margins and centred, so the pattern is the same from either
+ * face and the wall can be flipped. Bands are closed outlines for fill
+ * engraving; a width of 0 gives single lines.
+ */
+export function rowEngraving(b: Boxes, v: ParamValues): RowEngraving {
+  const sides = (v.rows_sides ?? 'none') as RowEngraving['sides'];
+  const w = Number(v.rows_width ?? 0);
+  const s = Number(v.rows_spacing ?? 10);
+  const m = Number(v.rows_margin ?? 0);
+  const inset = Number(v.rows_inset ?? 0);
+  const vertical = (v.rows_dir ?? 'vertical') !== 'horizontal';
+  const rows = (l: number, h: number) => () => {
+    // along: the direction the rows repeat in; across: the direction each row runs
+    const [along, across] = vertical ? [l, h] : [h, l];
+    const n = Math.floor((along - 2 * m + s) / (w + s));
+    if (n < 1 || across - 2 * inset <= 0) return;
+    const start = (along - (n * w + (n - 1) * s)) / 2;
+    const pt = (a: number, c: number) => (vertical ? { x: a, y: c } : { x: c, y: a });
+    for (let i = 0; i < n; i++) {
+      const a0 = start + i * (w + s);
+      const c0 = inset;
+      const c1 = across - inset;
+      if (w > 0) b.engravePath([pt(a0, c0), pt(a0 + w, c0), pt(a0 + w, c1), pt(a0, c1), pt(a0, c0)]);
+      else b.engravePath([pt(a0, c0), pt(a0, c1)]);
+    }
+  };
+  return { sides, rows };
 }

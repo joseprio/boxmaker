@@ -1,4 +1,5 @@
 import { Boxes, place } from '../engine/boxes';
+import type { Placement } from '../engine/part';
 import { Lid } from '../engine/lids';
 import { LidSettings, type HandleStyle, type LidStyle } from '../engine/settings';
 import {
@@ -7,8 +8,11 @@ import {
   fingerJointParams,
   materialGroup,
   outsideParam,
+  rowEngraving,
+  rowEngravingGroup,
   stackableGroup,
   stackableParams,
+  type RowEngraving,
 } from './common';
 import { bool, finishModel, num, str, type BoxModel, type GeneratorDef, type ParamGroup, type ParamValues } from './types';
 
@@ -120,6 +124,8 @@ export interface UniversalBoxParams {
   bottomEdge: string;
   verticalEdges: 'finger joints' | 'finger holes';
   outside: boolean;
+  /** rows engraved on the inside of two opposite walls */
+  rows?: RowEngraving;
 }
 
 /** Builds the four walls, floor and fixed top of a box; returns the inner dimensions used. */
@@ -135,11 +141,17 @@ export function buildUniversalBox(b: Boxes, p: UniversalBoxParams): { x: number;
     h = b.adjustSize(h, bot, top);
   }
   const ignoreWidths = [1, 6];
+  const fb = p.rows?.sides === 'frontback' ? p.rows.rows(x, h) : undefined;
+  const lr = p.rows?.sides === 'sides' ? p.rows.rows(y, h) : undefined;
+  const wall = (l: number, edges: string[], label: string, placement: Placement, rows?: () => void) => {
+    const part = b.rectangularWall(l, h, edges, { label, ignoreWidths, callback: rows ? [rows] : undefined, placement });
+    if (rows) part.engraveFace = 'inner';
+  };
 
-  b.rectangularWall(x, h, [bot, side, top, side], { label: 'front', ignoreWidths, placement: place.wallXZ(0, 0, 0) });
-  b.rectangularWall(x, h, [bot, side, top, side], { label: 'back', ignoreWidths, placement: place.wallXZ(0, y + t, 0) });
-  b.rectangularWall(y, h, [bot, 'f', top, 'f'], { label: 'left', ignoreWidths, placement: place.wallYZ(-t, 0, 0) });
-  b.rectangularWall(y, h, [bot, 'f', top, 'f'], { label: 'right', ignoreWidths, placement: place.wallYZ(x, 0, 0) });
+  wall(x, [bot, side, top, side], 'front', place.wallXZ(0, 0, 0), fb);
+  wall(x, [bot, side, top, side], 'back', place.wallXZ(0, y + t, 0), fb);
+  wall(y, [bot, 'f', top, 'f'], 'left', place.wallYZ(-t, 0, 0), lr);
+  wall(y, [bot, 'f', top, 'f'], 'right', place.wallYZ(x, 0, 0), lr);
 
   if (bot !== 'e') {
     b.rectangularWall(x, y, 'ffff', { label: 'bottom', placement: place.plateXY(0, 0, -t) });
@@ -162,6 +174,7 @@ function build(v: ParamValues): BoxModel {
     bottomEdge: str(v, 'bottom_edge'),
     verticalEdges: str(v, 'vertical_edges') as 'finger joints' | 'finger holes',
     outside: bool(v, 'outside'),
+    rows: rowEngraving(b, v),
   });
   if (topEdge === 'e') {
     new Lid(b, lidSettings(t, v)).draw({ x: dims.x, y: dims.y, zTop: dims.zTop });
@@ -205,6 +218,7 @@ export const universalBox: GeneratorDef = {
       ],
     },
     lidGroup,
+    rowEngravingGroup,
     materialGroup,
     fingerJointGroup,
     stackableGroup,
@@ -223,6 +237,7 @@ function buildOpen(v: ParamValues): BoxModel {
     bottomEdge: 'F',
     verticalEdges: 'finger joints',
     outside: bool(v, 'outside'),
+    rows: rowEngraving(b, v),
   });
   return finishModel(b);
 }
@@ -243,6 +258,7 @@ export const openBox: GeneratorDef = {
         outsideParam,
       ],
     },
+    rowEngravingGroup,
     materialGroup,
     fingerJointGroup,
   ],

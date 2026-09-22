@@ -1,5 +1,5 @@
 import { Boxes, place } from '../engine/boxes';
-import { dimParam, fingerJointGroup, fingerJointParams, materialGroup, outsideParam } from './common';
+import { dimParam, fingerJointGroup, fingerJointParams, materialGroup, outsideParam, rowEngraving, rowEngravingGroup } from './common';
 import { bool, finishModel, num, type BoxModel, type GeneratorDef, type ParamValues } from './types';
 
 function build(v: ParamValues): BoxModel {
@@ -14,10 +14,19 @@ function build(v: ParamValues): BoxModel {
     h = b.adjustSize(h);
   }
 
-  b.rectangularWall(x, h, 'FFFF', { label: 'Wall 1', placement: place.wallXZ(0, 0, 0) });
-  b.rectangularWall(x, h, 'FFFF', { label: 'Wall 3', placement: place.wallXZ(0, y + t, 0) });
-  b.rectangularWall(y, h, 'FfFf', { label: 'Wall 2', placement: place.wallYZ(-t, 0, 0) });
-  b.rectangularWall(y, h, 'FfFf', { label: 'Wall 4', placement: place.wallYZ(x, 0, 0) });
+  const rows = rowEngraving(b, v);
+  const fb = rows.sides === 'frontback' ? rows.rows(x, h) : undefined;
+  const lr = rows.sides === 'sides' ? rows.rows(y, h) : undefined;
+  const walls: Array<[number, string, string, ReturnType<typeof place.wallXZ>, (() => void) | undefined]> = [
+    [x, 'FFFF', 'Wall 1', place.wallXZ(0, 0, 0), fb],
+    [x, 'FFFF', 'Wall 3', place.wallXZ(0, y + t, 0), fb],
+    [y, 'FfFf', 'Wall 2', place.wallYZ(-t, 0, 0), lr],
+    [y, 'FfFf', 'Wall 4', place.wallYZ(x, 0, 0), lr],
+  ];
+  for (const [l, edges, label, placement, cb] of walls) {
+    const part = b.rectangularWall(l, h, edges, { label, callback: cb ? [cb] : undefined, placement });
+    if (cb) part.engraveFace = 'inner';
+  }
   b.rectangularWall(x, y, 'ffff', { label: 'Top', placement: place.plateXY(0, 0, h) });
   b.rectangularWall(x, y, 'ffff', { label: 'Bottom', placement: place.plateXY(0, 0, -t) });
 
@@ -41,6 +50,7 @@ export const closedBox: GeneratorDef = {
         outsideParam,
       ],
     },
+    rowEngravingGroup,
     materialGroup,
     fingerJointGroup,
   ],

@@ -178,6 +178,11 @@ export class Boxes {
     for (const path of paths) this.turtle.etch(path.map((q) => ({ x: q.x + x, y: q.y + y })));
   }
 
+  /** Engrave a path given in the current frame (closed when it ends where it starts). */
+  engravePath(pts: Vec2[]): void {
+    this.turtle.etch(pts);
+  }
+
   /** Current-frame point in part-local coordinates. */
   localPoint(x: number, y: number): Vec2 {
     return this.turtle.local(x, y);

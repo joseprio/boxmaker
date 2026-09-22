@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { bendStations, pathFrame, type Part, type Placement } from '../engine/part';
+import { modelBounds } from '../engine/bounds3d';
+import { boundsOf, type Vec2 } from '../engine/geometry';
+import { bendStations, pathFrame, placePoint, type Part, type Placement } from '../engine/part';
 import type { BoxModel } from '../generators/types';
 
 export const GROUP_COLORS: Record<string, string> = {
@@ -31,7 +33,7 @@ export function partGeometry(part: Part): THREE.BufferGeometry {
  * triangulation: the triangulated faces contain zero-area slivers wherever
  * holes line up, which EdgesGeometry would draw as stray lines.
  */
-export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
+export function partEdges(part: Part, thresholdDeg = 20, etchFaces?: number[]): THREE.BufferGeometry {
   const t = part.thickness;
   const cosThreshold = Math.cos((thresholdDeg * Math.PI) / 180);
   const pts: number[] = [];
@@ -53,12 +55,16 @@ export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
       if (la > 0 && lb > 0 && (ax * bx + ay * by) / (la * lb) < cosThreshold) pts.push(p.x, p.y, 0, p.x, p.y, t);
     }
   }
-  // flex cuts and engraving on both faces
-  for (const c of [...part.cuts, ...part.openPaths]) {
-    for (let i = 0; i + 1 < c.length; i++) {
-      for (const z of [0, t]) pts.push(c[i].x, c[i].y, z, c[i + 1].x, c[i + 1].y, z);
+  // flex cuts on both faces, engraving on its face
+  const lines = (paths: Vec2[][], faces: number[]) => {
+    for (const c of paths) {
+      for (let i = 0; i + 1 < c.length; i++) {
+        for (const z of faces) pts.push(c[i].x, c[i].y, z, c[i + 1].x, c[i + 1].y, z);
+      }
     }
-  }
+  };
+  lines(part.cuts, [0, t]);
+  lines(part.openPaths, etchFaces ?? [0, t]);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   return geo;
@@ -200,7 +206,23 @@ export interface SceneOptions {
 }
 
 /** Build a THREE.Group for the model in box space (Z up), centred at the origin. */
+/** Local z of the face a part's engraving belongs on, judged by which face lies nearer the model centre. */
+function engraveFaces(part: Part, centre: { x: number; y: number; z: number }): number[] | undefined {
+  if (!part.engraveFace || !part.placement || !part.openPaths.length) return undefined;
+  const b = boundsOf([part.outline]);
+  const cx = (b.minX + b.maxX) / 2;
+  const cy = (b.minY + b.maxY) / 2;
+  const d = (z: number) => {
+    const q = placePoint(part.placement as Placement, cx, cy, z);
+    return Math.hypot(q.x - centre.x, q.y - centre.y, q.z - centre.z);
+  };
+  const innerIsZero = d(0) < d(part.thickness);
+  return [(part.engraveFace === 'inner') === innerIsZero ? 0 : part.thickness];
+}
+
 export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE.Group {
+  const mb = modelBounds(model.parts);
+  const modelCentre = { x: (mb.min.x + mb.max.x) / 2, y: (mb.min.y + mb.max.y) / 2, z: (mb.min.z + mb.max.z) / 2 };
   const group = new THREE.Group();
   const explode = opts.explode ?? 0;
   const center = new THREE.Vector3();
@@ -222,7 +244,7 @@ export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE
     if (bent) geo.dispose();
     else mesh.applyMatrix4(placementMatrix(part.placement));
     mesh.userData.part = part;
-    const edgeGeo = partEdges(part);
+    const edgeGeo = partEdges(part, 20, engraveFaces(part, modelCentre));
     const edges = new THREE.LineSegments(
       bent ? bendGeometry(edgeGeo, part.placement, false) : edgeGeo,
       new THREE.LineBasicMaterial({ color: '#4a3418', transparent: true, opacity: 0.55 }),

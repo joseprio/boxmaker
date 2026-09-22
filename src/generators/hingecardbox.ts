@@ -123,6 +123,7 @@ function build(v: ParamValues): BoxModel {
     });
     addCabinetHingeEyes(b, hs, { edgeStartX: lid.e, length: lid.w, axisY: y + t, z: h, inward: 1, turn, label: `${n} hinge` });
   });
+  for (const p of b.parts) if (p.openPaths.length) p.engraveFace = 'outer';
   return finishModel(b);
 }
 

@@ -15,6 +15,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
   cutting layout.
 - **SVG and DXF export** with kerf (burn) compensation. Engraving goes to its own red group / `ENGRAVE`
   layer; flex cuts are cut lines.
+- **Engraved rows** (Universal, Closed and Open Box): bands of a set width and spacing on the inside of
+  two opposite walls, e.g. guides for CD storage.
 - **Engraved numbers** (Hinge Card Box): single-line strokes for vector engraving or merged outlines for
   fill engraving, from a small built-in digit font.
 - **Shareable URLs.** Every option is stored in the URL, so a configured box is a link.

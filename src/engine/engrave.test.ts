@@ -74,3 +74,54 @@ describe('hinge card box numbers', () => {
   });
 });
 
+describe('engraved rows', () => {
+  const gens = ['universalbox', 'closedbox', 'openbox'];
+  const walls: Record<string, Record<string, string[]>> = {
+    universalbox: { sides: ['left', 'right'], frontback: ['front', 'back'] },
+    openbox: { sides: ['left', 'right'], frontback: ['front', 'back'] },
+    closedbox: { sides: ['Wall 2', 'Wall 4'], frontback: ['Wall 1', 'Wall 3'] },
+  };
+  for (const id of gens) {
+    for (const rows_sides of ['sides', 'frontback']) {
+      for (const rows_dir of ['vertical', 'horizontal']) {
+        it(`${id}: ${rows_sides} ${rows_dir}`, async () => {
+          const { generators } = await import('../generators');
+          const g = generators.find((d) => d.id === id)!;
+          const w = 1.5;
+          const s = 10.4;
+          const m = 5;
+          const model = g.build({ ...defaultValues(g), rows_sides, rows_dir, rows_width: w, rows_spacing: s, rows_margin: m, rows_inset: 2 });
+          const chosen = walls[id][rows_sides];
+          for (const p of model.parts) {
+            if (!chosen.includes(p.label)) {
+              expect(p.openPaths, p.label).toHaveLength(0);
+              continue;
+            }
+            expect(p.engraveFace).toBe('inner');
+            // 100 mm walls: floor((100 - 2*5 + 10.4) / 11.9) = 8 bands, centred
+            expect(p.openPaths, p.label).toHaveLength(8);
+            const e = boundsOf(p.openPaths);
+            const [lo, hi] = rows_dir === 'vertical' ? [e.minX, e.maxX] : [e.minY, e.maxY];
+            const span = 8 * w + 7 * s;
+            expect(hi - lo).toBeCloseTo(span, 6);
+            expect((lo + hi) / 2).toBeCloseTo(50, 6);
+            const [c0, c1] = rows_dir === 'vertical' ? [e.minY, e.maxY] : [e.minX, e.maxX];
+            expect(c0).toBeCloseTo(2, 6);
+            expect(c1).toBeCloseTo(98, 6);
+            // closed bands for fill engraving
+            for (const band of p.openPaths) expect(band[0]).toEqual(band[band.length - 1]);
+          }
+        });
+      }
+    }
+  }
+
+  it('gives single lines at width 0 and nothing when switched off', async () => {
+    const { universalBox } = await import('../generators/universalbox');
+    const lines = universalBox.build({ ...defaultValues(universalBox), rows_sides: 'sides', rows_width: 0 });
+    const left = lines.parts.find((p) => p.label === 'left')!;
+    expect(left.openPaths.every((l) => l.length === 2)).toBe(true);
+    const off = universalBox.build(defaultValues(universalBox));
+    expect(off.parts.every((p) => p.openPaths.length === 0)).toBe(true);
+  });
+});
