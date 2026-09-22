@@ -19,16 +19,16 @@ function build(v: ParamValues): BoxModel {
     heights = heights.map((hh) => b.adjustSize(hh, bot, addLid));
   }
 
-  // Walls run counter-clockwise starting at the front-left corner.
+  // Walls run counter-clockwise starting at the front-left corner, local x from
+  // corner i to corner i+1, material outside the x*y cavity.
   // Corner heights: 0 = front left, 1 = front right, 2 = back right, 3 = back left.
+  const Z = { x: 0, y: 0, z: 1 };
   const wallPlacements: Placement[] = [
-    place.wallXZ(0, 0, 0), // front, left -> right
-    place.wallYZ(x, 0, 0), // right, front -> back
-    { origin: { x, y: y + t, z: 0 }, u: { x: -1, y: 0, z: 0 }, v: { x: 0, y: 0, z: 1 } }, // back, right -> left
-    place.wallYZ(-t, y, 0), // left, back -> front
+    { origin: { x: 0, y: 0, z: 0 }, u: { x: 1, y: 0, z: 0 }, v: Z }, // front, left -> right
+    { origin: { x, y: 0, z: 0 }, u: { x: 0, y: 1, z: 0 }, v: Z }, // right, front -> back
+    { origin: { x, y, z: 0 }, u: { x: -1, y: 0, z: 0 }, v: Z }, // back, right -> left
+    { origin: { x: 0, y, z: 0 }, u: { x: 0, y: -1, z: 0 }, v: Z }, // left, back -> front
   ];
-  // left wall runs back -> front
-  wallPlacements[3] = { origin: { x: -t, y, z: 0 }, u: { x: 0, y: -1, z: 0 }, v: { x: 0, y: 0, z: 1 } };
 
   const wallEdges: EdgeSpec[][] = [
     [bot, 'F', 'e', 'F'],
@@ -64,12 +64,14 @@ function build(v: ParamValues): BoxModel {
       ['F', 'F', 'e', 'F'],
       ['F', 'f', 'e', 'f'],
     ];
-    // Each lid wall sits above its box wall, drawn upside down: local y points downwards.
+    // Each lid wall sits above its box wall, drawn upside down (local y points
+    // down), so it runs from corner i+1 back to corner i.
+    const down = { x: 0, y: 0, z: -1 };
     const lidPlacements: Placement[] = [
-      { origin: { x, y: 0, z: zLid }, u: { x: -1, y: 0, z: 0 }, v: { x: 0, y: 0, z: -1 } },
-      { origin: { x: -t, y: 0, z: zLid }, u: { x: 0, y: 1, z: 0 }, v: { x: 0, y: 0, z: -1 } },
-      { origin: { x: 0, y: y + t, z: zLid }, u: { x: 1, y: 0, z: 0 }, v: { x: 0, y: 0, z: -1 } },
-      { origin: { x: x + t, y: y + t, z: zLid }, u: { x: 0, y: -1, z: 0 }, v: { x: 0, y: 0, z: -1 } },
+      { origin: { x, y: 0, z: zLid }, u: { x: -1, y: 0, z: 0 }, v: down }, // front: corner 1 -> 0
+      { origin: { x, y, z: zLid }, u: { x: 0, y: -1, z: 0 }, v: down }, // right: corner 2 -> 1
+      { origin: { x: 0, y, z: zLid }, u: { x: 1, y: 0, z: 0 }, v: down }, // back: corner 3 -> 2
+      { origin: { x: 0, y: 0, z: zLid }, u: { x: 0, y: 1, z: 0 }, v: down }, // left: corner 0 -> 3
     ];
     // walls go the other way round when mirrored: front wall spans corner 1 -> 0
     const lidPairs: Array<[number, number, number]> = [

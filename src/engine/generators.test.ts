@@ -61,3 +61,39 @@ describe('ported tray and box variants', () => {
     });
   }
 });
+
+describe('uneven height box', () => {
+  it('places walls on their corners and lid walls on top of them', async () => {
+    const { unevenHeightBox } = await import('../generators/unevenheightbox');
+    const { placePoint } = await import('./part');
+    const heights = [40, 60, 100, 80];
+    const v = { ...defaultValues(unevenHeightBox), height0: 40, height1: 60, height2: 100, height3: 80, lid_height: 5 };
+    const model = unevenHeightBox.build(v);
+    const x = 100;
+    const y = 100;
+    const corners = [
+      [0, 0],
+      [x, 0],
+      [x, y],
+      [0, y],
+    ];
+    const labels = ['front', 'right', 'back', 'left'];
+    const zLid = 100 + 5;
+    labels.forEach((label, i) => {
+      const len = i % 2 ? y : x;
+      const wall = model.parts.find((p) => p.label === label)!;
+      const a = placePoint(wall.placement!, 0, heights[i], 0);
+      const b = placePoint(wall.placement!, len, heights[(i + 1) % 4], 0);
+      expect([a.x, a.y, a.z]).toEqual([corners[i][0], corners[i][1], heights[i]].map((n) => expect.closeTo(n, 6)));
+      expect([b.x, b.y, b.z]).toEqual([corners[(i + 1) % 4][0], corners[(i + 1) % 4][1], heights[(i + 1) % 4]].map((n) => expect.closeTo(n, 6)));
+      // lid wall runs corner i+1 -> i, hanging down to the box wall's top
+      const lid = model.parts.find((p) => p.label === `lid ${label}`);
+      if (!lid) return;
+      const j = (i + 1) % 4;
+      const la = placePoint(lid.placement!, 0, zLid - heights[j], 0);
+      const lb = placePoint(lid.placement!, len, zLid - heights[i], 0);
+      expect([la.x, la.y, la.z]).toEqual([corners[j][0], corners[j][1], heights[j]].map((n) => expect.closeTo(n, 6)));
+      expect([lb.x, lb.y, lb.z]).toEqual([corners[i][0], corners[i][1], heights[i]].map((n) => expect.closeTo(n, 6)));
+    });
+  });
+});
