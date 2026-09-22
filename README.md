@@ -31,6 +31,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
 | Regular Box | Box with a regular polygon base (triangle → hexadecagon) |
 | Angled Box | Elongated box with both ends cornered, angled finger joints |
+| Rounded Box | Rounded vertical edges: a flex wall wraps round the floor and top, optional shelves and lid |
+| Flex Box | Living-hinge box whose wall wraps round to form the lid, closed with a latch |
 | Display Shelf | Slanted shelves with front lips and dividers |
 | Stackable Bin | Open bin with a slanted front that stacks on its siblings |
 | Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
@@ -60,12 +62,15 @@ and routing uses hash URLs, so it also works from a subdirectory or from `file:/
 - `boxes.ts` — the `Boxes` base class: `rectangularWall`, `trapezoidWall`, `polygonWall`,
   `regularPolygonWall`, holes, and the sizing helpers (`adjustSize`).
 - `lids.ts` — the lid styles and handles from `boxes/lids.py`.
+- Flex (living hinge) cuts, dove tails, `roundedPlate` and `surroundingWall` for walls that wrap
+  round rounded plates. Flex cuts are open cut lines (`Part.cuts`), exported with the contours.
 - `layout.ts` / `export.ts` — shelf packing of the parts plus SVG/DXF writers.
 
 The one real addition over upstream is **placement**: each part carries an optional origin and two
 basis vectors saying where it sits in box space. That is what makes the 3D preview exact rather
 than inferred — the viewer extrudes each part's outline by the material thickness and puts it
-where the generator said it goes.
+where the generator said it goes. Flex walls carry a bend path (straight runs and arcs) in their
+placement; the viewer slices their mesh across each bend and wraps it along the path.
 
 Generators live in `src/generators/` and are plain data: a list of parameter groups plus a `build`
 function that returns parts. Adding one means adding a file and an entry in `src/generators/index.ts`.

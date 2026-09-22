@@ -1,11 +1,14 @@
 import {
   BaseEdge,
   CompoundEdge,
+  DoveTailJoint,
+  DoveTailJointCounterPart,
   Edge,
   FingerHoleEdge,
   FingerHoles,
   FingerJointEdge,
   FingerJointEdgeCounterPart,
+  FlexEdge,
   OutSetEdge,
   StackableEdge,
   StackableEdgeTop,
@@ -13,8 +16,17 @@ import {
   StackableHoleEdgeTop,
 } from './edges';
 import { dedupe, nearlyEqual, signedArea, type Vec2, type Vec3 } from './geometry';
-import type { Part, Placement } from './part';
-import { FingerJointSettings, StackableSettings, type FingerJointParams, type StackableParams } from './settings';
+import { pathFrame, type Part, type PathSegment, type Placement } from './part';
+import {
+  DoveTailSettings,
+  FingerJointSettings,
+  FlexSettings,
+  StackableSettings,
+  type DoveTailParams,
+  type FingerJointParams,
+  type FlexParams,
+  type StackableParams,
+} from './settings';
 import { Turtle } from './turtle';
 
 export type EdgeSpec = string | BaseEdge;
@@ -37,6 +49,34 @@ export interface BoxesOptions {
   burn?: number;
   fingerJoint?: Partial<FingerJointParams>;
   stackable?: Partial<StackableParams>;
+  flex?: Partial<FlexParams>;
+  dovetail?: Partial<DoveTailParams>;
+}
+
+export interface RoundedPlateOptions extends WallOptions {
+  /** Outset the corners with the edges; draws slots for the wall's flex part (for 'h' edges). */
+  extendCorners?: boolean;
+  /** Number of pieces of the matching surroundingWall (splits the edges at the same places). */
+  wallpieces?: number;
+}
+
+export interface SurroundingWallOptions {
+  bottom?: EdgeSpec;
+  top?: EdgeSpec;
+  left?: EdgeSpec;
+  right?: EdgeSpec;
+  /** 1 to 4 separate pieces, joined with dove tails */
+  pieces?: number;
+  extendCorners?: boolean;
+  /** Called at the start of each straight bottom segment (frame on the nominal bottom line) with its length. */
+  callback?: (length: number) => void;
+  label?: string;
+  group?: string;
+  /**
+   * Where the wall starts: the middle of the plate's first side, on the inner
+   * face, heading along that side (v up). Each piece gets its own bent path.
+   */
+  placement?: Placement;
 }
 
 /**
@@ -76,6 +116,10 @@ export class Boxes {
     this.addEdge(new StackableEdgeTop(this, this.stackableSettings));
     this.addEdge(new StackableFeet(this, this.stackableSettings));
     this.addEdge(new StackableHoleEdgeTop(this, this.stackableSettings));
+    this.addEdge(new FlexEdge(this, new FlexSettings(this.thickness, opts.flex)));
+    const dt = new DoveTailSettings(this.thickness, opts.dovetail);
+    this.addEdge(new DoveTailJoint(this, dt));
+    this.addEdge(new DoveTailJointCounterPart(this, dt));
   }
 
   addEdge(edge: BaseEdge, char = edge.char): void {
@@ -118,6 +162,11 @@ export class Boxes {
 
   moveTo(x: number, y = 0, degrees = 0): void {
     this.turtle.moveTo(x, y, degrees);
+  }
+
+  /** Standalone cut line in the current frame (for flex patterns). */
+  cutLine(x1: number, y1: number, x2: number, y2: number): void {
+    this.turtle.cutLine(x1, y1, x2, y2);
   }
 
   saved<T>(fn: () => T): T {
@@ -295,6 +344,7 @@ export class Boxes {
       outline,
       holes,
       openPaths: open,
+      cuts: this.turtle.cuts,
       thickness: this.thickness,
       placement,
       group: this.currentGroup,
@@ -462,6 +512,214 @@ export class Boxes {
         this.corner(360 / corners);
       }
     });
+  }
+
+  // ------------------------------------------------------------------
+  // Latches (flex box doors)
+  // ------------------------------------------------------------------
+
+  /** Corrugated edge useful as a gripping area. */
+  grip(length: number, depth: number): void {
+    const grooves = Math.max(Math.floor(length / (depth * 2)) + 1, 1);
+    const d = length / grooves / 4;
+    for (let i = 0; i < grooves; i++) {
+      this.corner(90, d);
+      this.corner(-180, d);
+      this.corner(90, d);
+    }
+  }
+
+  private latchHole(length: number): void {
+    const t = this.thickness;
+    this.edge(1.1 * t);
+    this.corner(-90);
+    this.edge(length / 2 + 0.2 * t);
+    this.corner(-90);
+    this.edge(1.1 * t);
+  }
+
+  private latchGrip(length: number): void {
+    const t = this.thickness;
+    this.corner(90, t / 4);
+    this.grip(length / 2 - t / 2 - 0.2 * t, t / 2);
+    this.corner(90, t / 4);
+  }
+
+  /**
+   * Latch holding a flex box door shut. `positive` draws the tab on the box
+   * side; otherwise the door side with a slot and a grip. `reverse` when
+   * running away from the latch.
+   */
+  latch(length: number, positive = true, reverse = false): void {
+    const t = this.thickness;
+    if (positive) {
+      const poly = [0, -90, t, 90, length / 2, 90, t, -90, length / 2];
+      this.polyline(...(reverse ? poly.reverse() : poly));
+    } else if (reverse) {
+      this.latchGrip(length);
+      this.latchHole(length);
+      this.corner(90);
+    } else {
+      this.corner(90);
+      this.latchHole(length);
+      this.latchGrip(length);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Rounded plates and flex walls
+  // ------------------------------------------------------------------
+
+  /** Which sides a surroundingWall of `pieces` pieces is split at (boxes.py _splitWall). */
+  private splitWall(pieces: number, side: number): boolean {
+    return [
+      [false, false, false, false, true],
+      [true, false, false, false, true],
+      [true, false, true, false, true],
+      [true, true, true, false, true],
+      [true, true, true, true, true],
+    ][Math.max(0, Math.min(4, pieces))][side];
+  }
+
+  /**
+   * Plate with rounded corners matching `surroundingWall`. Part-local (0,0) is
+   * the corner of the nominal x*y rectangle. Callbacks are called per edge
+   * segment (split like the wall pieces) with the frame on the nominal line.
+   */
+  roundedPlate(x: number, y: number, r: number, edgeSpec: EdgeSpec = 'f', opts: RoundedPlateOptions = {}): Part {
+    const t = this.thickness;
+    const e = this.getEdge(edgeSpec);
+    const ext = opts.extendCorners ?? true;
+    const pieces = Math.min(opts.wallpieces ?? 1, 4);
+    this.beginPart(opts.label, opts.group);
+    this.moveTo(r, -e.startWidth());
+    let wallcount = 0;
+    [x - 2 * r, y - 2 * r, x - 2 * r, y - 2 * r].forEach((l, nr) => {
+      const n = this.splitWall(pieces, nr) ? 2 : 1;
+      for (let i = 0; i < n; i++) {
+        this.cc(opts.callback, wallcount++, 0, e.startWidth());
+        e.draw(l / n);
+      }
+      if (ext) {
+        // slot for the flex part of the wall to sit in
+        this.saved(() => {
+          this.moveTo(0, e.startWidth());
+          this.polyline(0, [90, r], 0, -90, t, -90, 0, [-90, r + t], 0, -90, t, -90, 0);
+        });
+        this.corner(90, r + e.startWidth());
+      } else {
+        this.step(-e.endWidth());
+        this.corner(90, r);
+        this.step(e.startWidth());
+      }
+    });
+    return this.endPart(opts.placement);
+  }
+
+  /**
+   * Flex wall(s) around a `roundedPlate`, starting in the middle of the
+   * plate's first side and running counter-clockwise. Part-local (0,0) of each
+   * piece is the start of its nominal bottom line; `h` is the inner height.
+   */
+  surroundingWall(x: number, y: number, r: number, h: number, opts: SurroundingWallOptions = {}): Part[] {
+    const t = this.thickness;
+    const flex = this.getEdge('X') as FlexEdge;
+    const top = this.getEdge(opts.top ?? 'e');
+    const bottom = this.getEdge(opts.bottom ?? 'e');
+    const left = this.getEdge(opts.left ?? 'D');
+    const right = this.getEdge(opts.right ?? 'd');
+    const ext = opts.extendCorners ?? true;
+    const topwidth = ext ? t : top.startWidth();
+    const bottomwidth = ext ? t : bottom.startWidth();
+
+    let c4 = (r * Math.PI * 0.5) / flex.settings.stretch;
+    let turn = 90;
+    let pieces = opts.pieces ?? 1;
+    let sides: number[];
+    if (pieces <= 2 && y - 2 * r < 1e-3) {
+      // no straight y sides: the flex goes round a half circle in one go
+      c4 *= 2;
+      turn = 180;
+      sides = [x / 2 - r, x - 2 * r, x - 2 * r];
+      if (pieces > 0) pieces += 1;
+    } else {
+      sides = [x / 2 - r, y - 2 * r, x - 2 * r, y - 2 * r, x - 2 * r];
+    }
+
+    const parts: Part[] = [];
+    const allSegs: PathSegment[] = [];
+    let tops: number[] = [];
+    let segs: PathSegment[] = [];
+    let startX = 0; // where the current piece starts along the whole wall
+    let walked = 0;
+    const baseLabel = opts.label ?? 'wall';
+    const multi = (opts.pieces ?? 1) > 1;
+
+    const start = () => {
+      this.beginPart(multi ? `${baseLabel} ${parts.length + 1}` : baseLabel, opts.group);
+      this.moveTo(0, -bottom.startWidth());
+      tops = [];
+      segs = [];
+      startX = walked;
+    };
+    const straight = (l: number) => {
+      const cb = opts.callback;
+      if (cb) this.cc(() => cb(l), 0, 0, bottom.startWidth());
+      bottom.draw(l);
+      tops.push(l);
+      segs.push({ length: l });
+      allSegs.push({ length: l });
+      walked += l;
+    };
+    const finish = () => {
+      this.saved(() => {
+        this.edgeCorner(bottom, right, 90);
+        right.draw(h);
+        this.edgeCorner(right, top, 90);
+        [...tops].reverse().forEach((d, n) => {
+          if (n % 2) {
+            this.step(topwidth - top.endWidth());
+            this.edge(d);
+            this.step(top.startWidth() - topwidth);
+          } else {
+            top.draw(d);
+          }
+        });
+        this.edgeCorner(top, left, 90);
+        left.draw(h);
+        this.edgeCorner(left, bottom, 90);
+      });
+      let placement: Placement | undefined;
+      if (opts.placement) {
+        const f = pathFrame({ ...opts.placement, path: allSegs }, startX);
+        placement = { origin: f.pos, u: f.dir, v: opts.placement.v, path: segs };
+      }
+      parts.push(this.endPart(placement));
+    };
+
+    start();
+    sides.forEach((l, nr) => {
+      const last = nr === sides.length - 1;
+      if (nr > 0 && this.splitWall(pieces, nr)) {
+        straight(l / 2);
+        finish();
+        if (last) return;
+        start();
+        straight(l / 2);
+      } else {
+        straight(l);
+      }
+      if (last) return;
+      this.step(bottomwidth - bottom.endWidth());
+      flex.draw(c4, h + topwidth + bottomwidth);
+      this.step(bottom.startWidth() - bottomwidth);
+      tops.push(c4);
+      const bend: PathSegment = { length: c4, angle: turn, radius: r };
+      segs.push(bend);
+      allSegs.push(bend);
+      walked += c4;
+    });
+    return parts;
   }
 
   private closePolygon(borders: number[]): number[] {

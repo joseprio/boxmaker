@@ -3,9 +3,11 @@ import { binTray } from './bintray';
 import { cardBox } from './cardbox';
 import { closedBox } from './closedbox';
 import { displayShelf } from './displayshelf';
+import { flexBox } from './flexbox';
 import { dividerTray } from './dividertray';
 import type { GeneratorDef } from './types';
 import { regularBox } from './regularbox';
+import { roundedBox } from './roundedbox';
 import { slidingLidBox } from './slidinglidbox';
 import { stackableBin } from './stackablebin';
 import { trayInsert } from './trayinsert';
@@ -24,6 +26,8 @@ export const generators: GeneratorDef[] = [
   slidingLidBox,
   regularBox,
   angledBox,
+  roundedBox,
+  flexBox,
   displayShelf,
   stackableBin,
   binTray,

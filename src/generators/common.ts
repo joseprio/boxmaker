@@ -1,8 +1,10 @@
 import type { ParamDef, ParamGroup, ParamValues } from './types';
 import {
   defaultFingerJointParams,
+  defaultFlexParams,
   defaultStackableParams,
   type FingerJointParams,
+  type FlexParams,
   type StackableParams,
 } from '../engine/settings';
 
@@ -98,3 +100,24 @@ export const outsideParam: ParamDef = {
   default: false,
   help: 'Treat sizes as outside measurements instead of inner ones',
 };
+
+export const flexGroup: ParamGroup = {
+  id: 'flex',
+  title: 'Flex Hinge',
+  collapsed: true,
+  params: [
+    { id: 'flex_distance', label: 'Line distance', type: 'number', default: 0.5, unit: 'x t', min: 0.1, max: 5, step: 0.05, help: 'Distance between the rows of cuts (multiples of thickness)' },
+    { id: 'flex_connection', label: 'Connection', type: 'number', default: 1, unit: 'x t', min: 0.1, max: 5, step: 0.1, help: 'Length of the uncut bridges (multiples of thickness)' },
+    { id: 'flex_width', label: 'Cut length', type: 'number', default: 5, unit: 'x t', min: 0.5, max: 50, step: 0.5, help: 'Length of each cut (multiples of thickness)' },
+    { id: 'flex_stretch', label: 'Stretch', type: 'number', default: 1.05, min: 1, max: 1.3, step: 0.01, help: 'How much the flex stretches when bent; the cut pattern is shortened by this factor' },
+  ],
+};
+
+export function flexParams(v: ParamValues): Partial<FlexParams> {
+  const p: Partial<FlexParams> = {};
+  for (const k of Object.keys(defaultFlexParams) as (keyof FlexParams)[]) {
+    const val = v[`flex_${k}`];
+    if (val !== undefined) p[k] = Number(val);
+  }
+  return p;
+}

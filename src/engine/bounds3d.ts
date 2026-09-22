@@ -1,5 +1,5 @@
 import type { Vec3 } from './geometry';
-import type { Part } from './part';
+import { bendStations, placePoint, type Part } from './part';
 
 export interface Bounds3 {
   min: Vec3;
@@ -20,15 +20,24 @@ export function modelBounds(parts: Part[]): Bounds3 {
   };
   for (const p of parts) {
     if (!p.placement) continue;
-    const { origin: o, u, v } = p.placement;
-    const w = { x: u.y * v.z - u.z * v.y, y: u.z * v.x - u.x * v.z, z: u.x * v.y - u.y * v.x };
     for (const pt of p.outline) {
       for (const d of [0, p.thickness]) {
-        add(
-          o.x + u.x * pt.x + v.x * pt.y + w.x * d,
-          o.y + u.y * pt.x + v.y * pt.y + w.y * d,
-          o.z + u.z * pt.x + v.z * pt.y + w.z * d,
-        );
+        const q = placePoint(p.placement, pt.x, pt.y, d);
+        add(q.x, q.y, q.z);
+      }
+    }
+    if (p.placement.path) {
+      // outline vertices are sparse along bends: sample the bent stretch too
+      const ys = p.outline.map((pt) => pt.y);
+      const y0 = Math.min(...ys);
+      const y1 = Math.max(...ys);
+      for (const x of bendStations(p.placement)) {
+        for (const yy of [y0, y1]) {
+          for (const d of [0, p.thickness]) {
+            const q = placePoint(p.placement, x, yy, d);
+            add(q.x, q.y, q.z);
+          }
+        }
       }
     }
   }

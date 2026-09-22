@@ -139,3 +139,71 @@ export class LidSettings {
     this.handle_height = p.handle_height * thickness;
   }
 }
+
+export interface FlexParams {
+  /** hint of how much the flex part should be shortened */
+  stretch: number;
+  /** width of the pattern perpendicular to the cuts (multiples of thickness) */
+  distance: number;
+  /** width of the gaps in the cuts (multiples of thickness) */
+  connection: number;
+  /** width of the pattern in direction of the cuts (multiples of thickness) */
+  width: number;
+}
+
+export const defaultFlexParams: FlexParams = {
+  stretch: 1.05,
+  distance: 0.5,
+  connection: 1.0,
+  width: 5.0,
+};
+
+export class FlexSettings {
+  stretch: number;
+  distance: number;
+  connection: number;
+  width: number;
+
+  constructor(thickness: number, params: Partial<FlexParams> = {}) {
+    const p = { ...defaultFlexParams, ...params };
+    this.stretch = p.stretch;
+    this.distance = p.distance * thickness;
+    this.connection = p.connection * thickness;
+    this.width = p.width * thickness;
+    if (this.distance < 0.01) throw new Error('Flex: distance must be > 0.01 mm');
+    if (this.width < 0.1) throw new Error('Flex: width must be > 0.1 mm');
+  }
+}
+
+export interface DoveTailParams {
+  /** how much the dove tails widen, in degrees */
+  angle: number;
+  /** from one middle of a dove tail to another (multiples of thickness) */
+  size: number;
+  /** how far the dove tails stick out (multiples of thickness) */
+  depth: number;
+  /** corner radius (multiples of thickness) */
+  radius: number;
+}
+
+export const defaultDoveTailParams: DoveTailParams = {
+  angle: 50,
+  size: 3,
+  depth: 1.5,
+  radius: 0.2,
+};
+
+export class DoveTailSettings {
+  angle: number;
+  size: number;
+  depth: number;
+  radius: number;
+
+  constructor(thickness: number, params: Partial<DoveTailParams> = {}) {
+    const p = { ...defaultDoveTailParams, ...params };
+    this.angle = Math.max(-80, Math.min(80, p.angle));
+    this.size = p.size * thickness;
+    this.depth = p.depth * thickness;
+    this.radius = p.radius * thickness;
+  }
+}

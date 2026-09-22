@@ -18,6 +18,8 @@ export class Turtle {
   private stack: TurtleState[] = [];
   /** All polylines drawn since the last `reset()`. */
   paths: Vec2[][] = [];
+  /** Standalone cut lines (never joined with the contours). */
+  cuts: Vec2[][] = [];
   /** Arc flattening: max angle per segment in degrees. */
   arcStep = 7.5;
 
@@ -25,6 +27,12 @@ export class Turtle {
     this.state = { x: 0, y: 0, a: 0 };
     this.stack = [];
     this.paths = [];
+    this.cuts = [];
+  }
+
+  /** Add a standalone cut line between two points of the local frame. */
+  cutLine(x1: number, y1: number, x2: number, y2: number): void {
+    this.cuts.push([this.local(x1, y1), this.local(x2, y2)]);
   }
 
   get position(): Vec2 {

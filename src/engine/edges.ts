@@ -1,5 +1,5 @@
 import type { Boxes } from './boxes';
-import { FingerJointSettings, StackableSettings } from './settings';
+import { DoveTailSettings, FingerJointSettings, FlexSettings, StackableSettings } from './settings';
 
 /**
  * An edge draws one side of a part. Ported from boxes.py: `startWidth` is how
@@ -433,4 +433,108 @@ export class GripHoleEdge extends BaseEdge {
       (length - width) / 2,
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Flex (living hinge) and dove tails
+// ---------------------------------------------------------------------------
+
+/**
+ * Straight edge with a field of staggered flex cuts next to it, spanning `h`
+ * into the part ('X'). The opposite side of the part should be a plain edge.
+ */
+export class FlexEdge extends BaseEdge {
+  readonly char = 'X';
+  readonly description = 'Flex cut';
+
+  constructor(
+    boxes: Boxes,
+    public settings: FlexSettings,
+  ) {
+    super(boxes);
+  }
+
+  draw(x: number, h = 0): void {
+    const { distance: dist, connection, width } = this.settings;
+    const b = this.boxes;
+    const lines = Math.floor(x / dist);
+    const leftover = x - lines * dist;
+    const sections = Math.max(Math.floor((h - connection) / width), 1);
+    const sheight = (h - connection) / sections - connection;
+    const cut = (pos: number, y1: number, y2: number) => b.cutLine(pos, y1, pos, y2);
+
+    for (let i = 1; i < lines; i++) {
+      const pos = i * dist + leftover / 2;
+      if (i % 2) {
+        cut(pos, 0, connection + sheight);
+        for (let j = 0; j < Math.floor((sections - 1) / 2); j++) {
+          cut(pos, (2 * j + 1) * sheight + (2 * j + 2) * connection, (2 * j + 3) * (sheight + connection));
+        }
+        if (!(sections % 2)) cut(pos, h - sheight - connection, h);
+      } else if (sections % 2) {
+        cut(pos, h, h - connection - sheight);
+        for (let j = 0; j < Math.floor((sections - 1) / 2); j++) {
+          cut(pos, h - ((2 * j + 1) * sheight + (2 * j + 2) * connection), h - (2 * j + 3) * (sheight + connection));
+        }
+      } else {
+        for (let j = 0; j < sections / 2; j++) {
+          cut(pos, h - connection - 2 * j * (sheight + connection), h - 2 * (j + 1) * (sheight + connection));
+        }
+      }
+    }
+    b.edge(x);
+  }
+}
+
+export class DoveTailJoint extends BaseEdge {
+  readonly char: string = 'd';
+  readonly description: string = 'Dove Tail Joint';
+  positive = true;
+
+  constructor(
+    boxes: Boxes,
+    public settings: DoveTailSettings,
+  ) {
+    super(boxes);
+  }
+
+  draw(length: number): void {
+    const s = this.settings;
+    const b = this.boxes;
+    const radius = s.radius;
+    const a = s.angle + 90;
+    const alpha = 0.5 * Math.PI - (Math.PI * s.angle) / 180;
+    const l1 = radius / Math.tan(alpha / 2);
+    const diffx = (0.5 * s.depth) / Math.tan(alpha);
+    const l2 = (0.5 * s.depth) / Math.sin(alpha);
+    const sections = Math.floor(length / (s.size * 2));
+    const leftover = length - sections * s.size * 2;
+    if (sections === 0) {
+      b.edge(length);
+      return;
+    }
+    const p = this.positive ? 1 : -1;
+    b.edge((s.size + leftover) / 2 + diffx - l1);
+    for (let i = 0; i < sections; i++) {
+      b.corner(-p * a, radius);
+      b.edge(2 * (l2 - l1));
+      b.corner(p * a, radius);
+      b.edge(2 * (diffx - l1) + s.size);
+      b.corner(p * a, radius);
+      b.edge(2 * (l2 - l1));
+      b.corner(-p * a, radius);
+      if (i < sections - 1) b.edge(2 * (diffx - l1) + s.size);
+    }
+    b.edge((s.size + leftover) / 2 + diffx - l1);
+  }
+
+  margin(): number {
+    return this.positive ? this.settings.depth : 0;
+  }
+}
+
+export class DoveTailJointCounterPart extends DoveTailJoint {
+  override readonly char = 'D';
+  override readonly description = 'Dove Tail Joint (opposing side)';
+  override positive = false;
 }

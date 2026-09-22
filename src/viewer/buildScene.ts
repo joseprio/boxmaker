@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Part, Placement } from '../engine/part';
+import { bendStations, placePoint, type Part, type Placement } from '../engine/part';
 import type { BoxModel } from '../generators/types';
 
 export const GROUP_COLORS: Record<string, string> = {
@@ -53,9 +53,88 @@ export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
       if (la > 0 && lb > 0 && (ax * bx + ay * by) / (la * lb) < cosThreshold) pts.push(p.x, p.y, 0, p.x, p.y, t);
     }
   }
+  // flex cuts on both faces
+  for (const c of part.cuts) {
+    for (let i = 0; i + 1 < c.length; i++) {
+      for (const z of [0, t]) pts.push(c[i].x, c[i].y, z, c[i + 1].x, c[i + 1].y, z);
+    }
+  }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
   return geo;
+}
+
+type P3 = [number, number, number];
+
+/** Split triangles (non-indexed positions) along the plane x = c. */
+function splitTriangles(pos: number[], c: number): number[] {
+  const out: number[] = [];
+  const eps = 1e-9;
+  for (let i = 0; i < pos.length; i += 9) {
+    const tri: P3[] = [
+      [pos[i], pos[i + 1], pos[i + 2]],
+      [pos[i + 3], pos[i + 4], pos[i + 5]],
+      [pos[i + 6], pos[i + 7], pos[i + 8]],
+    ];
+    const d = tri.map((p) => p[0] - c);
+    if (Math.max(...d) <= eps || Math.min(...d) >= -eps) {
+      out.push(...tri.flat());
+      continue;
+    }
+    // clip the triangle into the two sides of the plane, keeping the winding
+    for (const side of [-1, 1]) {
+      const poly: P3[] = [];
+      for (let k = 0; k < 3; k++) {
+        const a = tri[k];
+        const b = tri[(k + 1) % 3];
+        const da = d[k] * side;
+        const db = d[(k + 1) % 3] * side;
+        if (da >= 0) poly.push(a);
+        if ((da > 0 && db < 0) || (da < 0 && db > 0)) {
+          const f = da / (da - db);
+          poly.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
+        }
+      }
+      for (let k = 1; k + 1 < poly.length; k++) out.push(...poly[0], ...poly[k], ...poly[k + 1]);
+    }
+  }
+  return out;
+}
+
+/** Split line segments (pairs of points) at the plane x = c. */
+function splitSegments(pos: number[], c: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < pos.length; i += 6) {
+    const a = pos.slice(i, i + 3);
+    const b = pos.slice(i + 3, i + 6);
+    const da = a[0] - c;
+    const db = b[0] - c;
+    if ((da > 1e-9 && db < -1e-9) || (da < -1e-9 && db > 1e-9)) {
+      const f = da / (da - db);
+      const m = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+      out.push(...a, ...m, ...m, ...b);
+    } else {
+      out.push(...a, ...b);
+    }
+  }
+  return out;
+}
+
+/** Subdivide a local-space geometry across the bends and map it into box space. */
+function bendGeometry(geo: THREE.BufferGeometry, placement: Placement, triangles: boolean): THREE.BufferGeometry {
+  const src = geo.index ? geo.toNonIndexed() : geo;
+  let pos = Array.from(src.getAttribute('position').array as ArrayLike<number>);
+  for (const c of bendStations(placement)) pos = triangles ? splitTriangles(pos, c) : splitSegments(pos, c);
+  for (let i = 0; i < pos.length; i += 3) {
+    const q = placePoint(placement, pos[i], pos[i + 1], pos[i + 2]);
+    pos[i] = q.x;
+    pos[i + 1] = q.y;
+    pos[i + 2] = q.z;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (triangles) out.computeVertexNormals();
+  return out;
 }
 
 export function placementMatrix(p: Placement): THREE.Matrix4 {
@@ -91,11 +170,14 @@ export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE
       metalness: 0.0,
       side: THREE.DoubleSide,
     });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.applyMatrix4(placementMatrix(part.placement));
+    const bent = Boolean(part.placement.path?.length);
+    const mesh = new THREE.Mesh(bent ? bendGeometry(geo, part.placement, true) : geo, mat);
+    if (bent) geo.dispose();
+    else mesh.applyMatrix4(placementMatrix(part.placement));
     mesh.userData.part = part;
+    const edgeGeo = partEdges(part);
     const edges = new THREE.LineSegments(
-      partEdges(part),
+      bent ? bendGeometry(edgeGeo, part.placement, false) : edgeGeo,
       new THREE.LineBasicMaterial({ color: '#4a3418', transparent: true, opacity: 0.55 }),
     );
     mesh.add(edges);
@@ -111,6 +193,8 @@ export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE
     const amount = explode * Math.max(size.x, size.y, size.z) * 0.5;
     for (const mesh of meshes) {
       const part = mesh.userData.part as Part;
+      // bent walls wrap around the model: they stay put
+      if (part.placement?.path?.length) continue;
       const m = placementMatrix(part.placement as Placement);
       const normal = new THREE.Vector3().setFromMatrixColumn(m, 2);
       // move parts outward from the model centre along their normal direction

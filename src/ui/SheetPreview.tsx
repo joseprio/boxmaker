@@ -15,6 +15,7 @@ export function SheetPreview({ model }: { model: BoxModel }) {
           label: pp.part.label,
           outline: toD(outline),
           holes: holes.map(toD),
+          cuts: pp.part.cuts.map((c) => c.map((p, i) => `${i ? 'L' : 'M'}${(p.x + pp.dx).toFixed(2)} ${(sheet.height - (p.y + pp.dy)).toFixed(2)}`).join(' ')),
           cx: (pp.bounds.minX + pp.bounds.maxX) / 2 + pp.dx,
           cy: sheet.height - ((pp.bounds.minY + pp.bounds.maxY) / 2 + pp.dy),
         };
@@ -32,6 +33,7 @@ export function SheetPreview({ model }: { model: BoxModel }) {
             {p.holes.map((h, j) => (
               <path key={j} d={h} fill="#fffdf8" stroke="#1d4ed8" strokeWidth={0.4} />
             ))}
+            {p.cuts.length > 0 && <path d={p.cuts.join(' ')} fill="none" stroke="#1d4ed8" strokeWidth={0.25} />}
             <text x={p.cx} y={p.cy} fontSize={fs} textAnchor="middle" dominantBaseline="middle" fill="#7a6a50">
               {p.label}
             </text>

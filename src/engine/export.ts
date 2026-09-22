@@ -33,6 +33,10 @@ export function toSVG(parts: Part[], opts: ExportOptions): string {
     for (const h of holes) {
       lines.push(`      <path stroke="#0000ff" d="${svgPath(h, pp.dx, pp.dy, sheet.height)}"/>`);
     }
+    for (const c of pp.part.cuts) {
+      const d = c.map((p, i) => `${i ? 'L' : 'M'}${fmt(p.x + pp.dx)} ${fmt(sheet.height - (p.y + pp.dy))}`).join(' ');
+      lines.push(`      <path d="${d}"/>`);
+    }
     for (const op of pp.part.openPaths) {
       const d = op.map((p, i) => `${i ? 'L' : 'M'}${fmt(p.x + pp.dx)} ${fmt(sheet.height - (p.y + pp.dy))}`).join(' ');
       lines.push(`      <path stroke="#ff0000" d="${d}"/>`);
@@ -70,11 +74,11 @@ export function toDXF(parts: Part[], opts: ExportOptions): string {
   push(0, 'ENDSEC');
   push(0, 'SECTION');
   push(2, 'ENTITIES');
-  const poly = (pts: Vec2[], dx: number, dy: number, layer: string) => {
+  const poly = (pts: Vec2[], dx: number, dy: number, layer: string, closed = true) => {
     push(0, 'POLYLINE');
     push(8, layer);
     push(66, 1);
-    push(70, 1); // closed
+    push(70, closed ? 1 : 0);
     for (const p of pts) {
       push(0, 'VERTEX');
       push(8, layer);
@@ -88,6 +92,7 @@ export function toDXF(parts: Part[], opts: ExportOptions): string {
     const { outline, holes } = cutContours(pp.part, opts.burn);
     poly(outline, pp.dx, pp.dy, 'CUT');
     for (const h of holes) poly(h, pp.dx, pp.dy, 'CUT_INNER');
+    for (const c of pp.part.cuts) poly(c, pp.dx, pp.dy, 'CUT_INNER', false);
   }
   push(0, 'ENDSEC');
   push(0, 'EOF');
