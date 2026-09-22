@@ -31,6 +31,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
 | Hinge Box | Lid on laser-cut cabinet hinges turning on a metal pin; optional split lid |
 | Integrated Hinge Box | Lid pivoting on pins cut into its back wall, no hardware |
+| Pirate Chest | Chest with a rounded lid of angled panels on integrated hinges |
+| Side Hinge Box | Hidden hinges: an outer shell turns on two pins, opening the top and one end |
 | Regular Box | Box with a regular polygon base (triangle → hexadecagon) |
 | Angled Box | Elongated box with both ends cornered, angled finger joints |
 | Rounded Box | Rounded vertical edges: a flex wall wraps round the floor and top, optional shelves and lid |

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { hingeBox } from '../generators/hingebox';
 import { integratedHingeBox } from '../generators/integratedhingebox';
+import { pirateChest } from '../generators/piratechest';
+import { sideHingeBox } from '../generators/sidehingebox';
+import { modelBounds } from './bounds3d';
 import { defaultValues, type GeneratorDef } from '../generators/types';
 import { boundsOf, signedArea } from './geometry';
 import { placePoint } from './part';
@@ -15,12 +18,18 @@ function checkOutlines(parts: { label: string; outline: { x: number; y: number }
   }
 }
 
-describe('integrated hinge box', () => {
-  for (const lid_open of [0, 45, 100]) {
-    it(`pin holes sit on the pivot (lid open ${lid_open})`, () => {
-      const m = build(integratedHingeBox, { lid_open });
+describe('chest hinges', () => {
+  // both default to a pivot at Y = y + t, Z = 100
+  const cases: Array<[GeneratorDef, object, string[]]> = [
+    [integratedHingeBox, {}, ['left side', 'right side']],
+    [pirateChest, {}, ['left', 'right']],
+    [pirateChest, { n: 3 }, ['left', 'right']],
+  ];
+  for (const [gen, extra, sideLabels] of cases) for (const lid_open of [0, 45, 100]) {
+    it(`${gen.id} ${JSON.stringify(extra)}: discs on the pivot, pins in their slots (lid open ${lid_open})`, () => {
+      const m = build(gen, { ...extra, lid_open });
       checkOutlines(m.parts);
-      for (const label of ['left side', 'right side']) {
+      for (const label of sideLabels) {
         const side = m.parts.find((p) => p.label === label)!;
         expect(side.holes).toHaveLength(1);
         const b = boundsOf(side.holes);
@@ -93,4 +102,46 @@ describe('hinge box', () => {
   it('refuses edges too short for a hinge', () => {
     expect(() => build(hingeBox, { x: 20 })).toThrow(/too short/);
   });
+});
+
+describe('side hinge box', () => {
+  for (const lid_open of [0, 40, 90]) {
+    it(`slots, holes and pins line up on the pivot (lid open ${lid_open})`, () => {
+      const m = build(sideHingeBox, { lid_open });
+      checkOutlines(m.parts);
+      const t3 = 3;
+      const hc = 2 * t3 + 5.5;
+      const pivot = { x: 100 - hc + t3, z: hc - t3 };
+      const holeBox = (label: string) => {
+        const p = m.parts.find((q) => q.label === label)!;
+        expect(p.holes, label).toHaveLength(1);
+        const pts = p.holes[0].map((q) => placePoint(p.placement!, q.x, q.y, 0));
+        const xs = pts.map((q) => q.x);
+        const zs = pts.map((q) => q.z);
+        return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+      };
+      const centred = (b: { x0: number; x1: number; z0: number; z1: number }) => {
+        expect((b.x0 + b.x1) / 2).toBeCloseTo(pivot.x, 6);
+        expect((b.z0 + b.z1) / 2).toBeCloseTo(pivot.z, 6);
+      };
+      // the outer walls turn about the pivot, so their holes stay on it
+      for (const l of ['outer hinge side A', 'outer hinge side C']) centred(holeBox(l));
+      for (const side of ['A', 'C']) {
+        const inner = holeBox(`inner hinge side ${side}`);
+        const disc = holeBox(`hinge disc ${side}`);
+        centred(inner);
+        centred(disc);
+        // both slots are t wide and 1.5 t tall, like the pin's cross-section
+        const pin = modelBounds(m.parts.filter((q) => q.label === `hinge pin ${side}`));
+        for (const s of [inner, disc]) {
+          expect(s.x1 - s.x0).toBeCloseTo(t3, 6);
+          expect(s.z1 - s.z0).toBeCloseTo(1.5 * t3, 6);
+          expect(pin.min.x).toBeCloseTo(s.x0, 6);
+          expect(pin.max.x).toBeCloseTo(s.x1, 6);
+          expect(pin.min.z).toBeCloseTo(s.z0, 6);
+          expect(pin.max.z).toBeCloseTo(s.z1, 6);
+        }
+      }
+    });
+  }
 });

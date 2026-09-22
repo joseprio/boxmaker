@@ -10,6 +10,34 @@ const Y = { x: 0, y: 1, z: 0 };
 const Z = { x: 0, y: 0, z: 1 };
 const neg = (p: { x: number; y: number; z: number }) => ({ x: -p.x, y: -p.y, z: -p.z });
 
+/**
+ * The disc cut out of a chest hinge's round hole turns in it, holding the lid's
+ * pin in its slot. Call right after drawing the wall with the hinge edge
+ * `edgeChar`; `placement` is that wall's (turned with the lid).
+ */
+export function addHingeDisc(b: Boxes, edgeChar: string, label: string, placement: Placement): void {
+  const hinge = b.getEdge(edgeChar) as ChestHinge;
+  const disc = hinge.discs[hinge.discs.length - 1];
+  b.freePart(
+    () => {
+      b.hole(disc.centre.x, disc.centre.y, disc.radius);
+      b.closedPath(disc.slot);
+    },
+    { label, group: 'handle', placement },
+  );
+}
+
+export function chestHingeSettings(t: number, v: ParamValues): ChestHingeSettings {
+  return new ChestHingeSettings(t, { pin_height: num(v, 'ch_pin_height'), hinge_strength: num(v, 'ch_hinge_strength'), play: num(v, 'ch_play') });
+}
+
+/** Register the chest hinge edges o O p P q Q. */
+export function addChestHinges(b: Boxes, hs: ChestHingeSettings): void {
+  for (const e of [new ChestHinge(b, hs), new ChestHinge(b, hs, true), new ChestHingeTop(b, hs), new ChestHingeTop(b, hs, true), new ChestHingePin(b, hs), new ChestHingeFront(b, hs)]) {
+    b.addEdge(e);
+  }
+}
+
 export const lidOpenParam = {
   id: 'lid_open',
   label: 'Preview: lid open',
@@ -35,14 +63,8 @@ function build(v: ParamValues): BoxModel {
     h = b.adjustSize(h);
   }
 
-  const hs = new ChestHingeSettings(t, {
-    pin_height: num(v, 'ch_pin_height'),
-    hinge_strength: num(v, 'ch_hinge_strength'),
-    play: num(v, 'ch_play'),
-  });
-  for (const e of [new ChestHinge(b, hs), new ChestHinge(b, hs, true), new ChestHingeTop(b, hs), new ChestHingeTop(b, hs, true), new ChestHingePin(b, hs), new ChestHingeFront(b, hs)]) {
-    b.addEdge(e);
-  }
+  const hs = chestHingeSettings(t, v);
+  addChestHinges(b, hs);
   const hy = b.getEdge('O').startWidth();
   const hy2 = b.getEdge('P').startWidth();
   if (h - hy <= 0 || hl - hy2 <= 0) throw new Error('Box or lid too low for the hinge');
@@ -58,16 +80,7 @@ function build(v: ParamValues): BoxModel {
   ];
   for (const [label, edges, placement, ignoreWidths] of sides) {
     b.rectangularWall(y, h - hy, edges, { label, ignoreWidths, placement });
-    // the disc cut out of the hole turns in it, holding the lid's pin in its slot
-    const hinge = b.getEdge(edges[2]) as ChestHinge;
-    const disc = hinge.discs[hinge.discs.length - 1];
-    b.freePart(
-      () => {
-        b.hole(disc.centre.x, disc.centre.y, disc.radius);
-        b.closedPath(disc.slot);
-      },
-      { label: `hinge disc ${label.split(' ')[0]}`, group: 'handle', placement: turn(placement) },
-    );
+    addHingeDisc(b, edges[2], `hinge disc ${label.split(' ')[0]}`, turn(placement));
   }
   b.rectangularWall(x, h, 'FFeF', { label: 'front', placement: place.wallXZ(0, 0, 0) });
   const back: EdgeSpec[] = ['F', new CompoundEdge(b, ['F', 'e'], [h - hy, hy]), 'e', new CompoundEdge(b, ['e', 'F'], [hy, h - hy])];
@@ -93,7 +106,7 @@ function build(v: ParamValues): BoxModel {
   return finishModel(b);
 }
 
-const hingeGroup: ParamGroup = {
+export const chestHingeGroup: ParamGroup = {
   id: 'chesthinge',
   title: 'Hinge',
   collapsed: true,
@@ -122,7 +135,7 @@ export const integratedHingeBox: GeneratorDef = {
         lidOpenParam,
       ],
     },
-    hingeGroup,
+    chestHingeGroup,
     materialGroup,
     fingerJointGroup,
   ],
