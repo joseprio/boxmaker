@@ -26,6 +26,38 @@ export function partGeometry(part: Part): THREE.BufferGeometry {
   return geo;
 }
 
+/**
+ * Outline edges of an extruded part, built from its contours rather than the
+ * triangulation: the triangulated faces contain zero-area slivers wherever
+ * holes line up, which EdgesGeometry would draw as stray lines.
+ */
+export function partEdges(part: Part, thresholdDeg = 20): THREE.BufferGeometry {
+  const t = part.thickness;
+  const cosThreshold = Math.cos((thresholdDeg * Math.PI) / 180);
+  const pts: number[] = [];
+  for (const c of [part.outline, ...part.holes]) {
+    const n = c.length;
+    for (let i = 0; i < n; i++) {
+      const prev = c[(i + n - 1) % n];
+      const p = c[i];
+      const q = c[(i + 1) % n];
+      // contour on both faces
+      pts.push(p.x, p.y, 0, q.x, q.y, 0, p.x, p.y, t, q.x, q.y, t);
+      // side edge only at real corners, not along flattened arcs
+      const ax = p.x - prev.x;
+      const ay = p.y - prev.y;
+      const bx = q.x - p.x;
+      const by = q.y - p.y;
+      const la = Math.hypot(ax, ay);
+      const lb = Math.hypot(bx, by);
+      if (la > 0 && lb > 0 && (ax * bx + ay * by) / (la * lb) < cosThreshold) pts.push(p.x, p.y, 0, p.x, p.y, t);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  return geo;
+}
+
 export function placementMatrix(p: Placement): THREE.Matrix4 {
   const u = new THREE.Vector3(p.u.x, p.u.y, p.u.z).normalize();
   const v = new THREE.Vector3(p.v.x, p.v.y, p.v.z).normalize();
@@ -63,7 +95,7 @@ export function buildModelGroup(model: BoxModel, opts: SceneOptions = {}): THREE
     mesh.applyMatrix4(placementMatrix(part.placement));
     mesh.userData.part = part;
     const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geo, 20),
+      partEdges(part),
       new THREE.LineBasicMaterial({ color: '#4a3418', transparent: true, opacity: 0.55 }),
     );
     mesh.add(edges);
