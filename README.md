@@ -53,6 +53,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Magazine File | Tall at the back, low at the front, sides curving between; optional wall mounting holes |
 | Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
 | Uneven Height Box | Different height at each corner, with a matching lid |
+| Skådis Pegboard | IKEA Skådis-style pegboard (staggered slots on a 20 mm grid) with spacer washers |
 
 ## Development
 
