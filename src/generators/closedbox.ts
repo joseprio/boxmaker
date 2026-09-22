@@ -1,5 +1,5 @@
-import { Boxes, place } from '../engine/boxes';
-import { dimParam, fingerJointGroup, fingerJointParams, materialGroup, outsideParam, rowEngraving, rowEngravingGroup } from './common';
+import { Boxes, place, type EdgeSpec } from '../engine/boxes';
+import { dimParam, fingerJointGroup, fingerJointParams, floorThickness, materialWithFloorGroup, outsideParam, rowEngraving, rowEngravingGroup } from './common';
 import { bool, finishModel, num, type BoxModel, type GeneratorDef, type ParamValues } from './types';
 
 function build(v: ParamValues): BoxModel {
@@ -8,27 +8,29 @@ function build(v: ParamValues): BoxModel {
   let x = num(v, 'x');
   let y = num(v, 'y');
   let h = num(v, 'h');
+  const tf = floorThickness(v);
+  const bottom = b.floorEdge('F', tf);
   if (bool(v, 'outside')) {
     x = b.adjustSize(x);
     y = b.adjustSize(y);
-    h = b.adjustSize(h);
+    h = b.adjustSize(h, bottom, true);
   }
 
   const rows = rowEngraving(b, v);
   const fb = rows.sides === 'frontback' ? rows.rows(x, h) : undefined;
   const lr = rows.sides === 'sides' ? rows.rows(y, h) : undefined;
-  const walls: Array<[number, string, string, ReturnType<typeof place.wallXZ>, (() => void) | undefined]> = [
-    [x, 'FFFF', 'Wall 1', place.wallXZ(0, 0, 0), fb],
-    [x, 'FFFF', 'Wall 3', place.wallXZ(0, y + t, 0), fb],
-    [y, 'FfFf', 'Wall 2', place.wallYZ(-t, 0, 0), lr],
-    [y, 'FfFf', 'Wall 4', place.wallYZ(x, 0, 0), lr],
+  const walls: Array<[number, EdgeSpec[], string, ReturnType<typeof place.wallXZ>, (() => void) | undefined]> = [
+    [x, [bottom, 'F', 'F', 'F'], 'Wall 1', place.wallXZ(0, 0, 0), fb],
+    [x, [bottom, 'F', 'F', 'F'], 'Wall 3', place.wallXZ(0, y + t, 0), fb],
+    [y, [bottom, 'f', 'F', 'f'], 'Wall 2', place.wallYZ(-t, 0, 0), lr],
+    [y, [bottom, 'f', 'F', 'f'], 'Wall 4', place.wallYZ(x, 0, 0), lr],
   ];
   for (const [l, edges, label, placement, cb] of walls) {
     const part = b.rectangularWall(l, h, edges, { label, callback: cb ? [cb] : undefined, placement });
     if (cb) part.engraveFace = 'inner';
   }
   b.rectangularWall(x, y, 'ffff', { label: 'Top', placement: place.plateXY(0, 0, h) });
-  b.rectangularWall(x, y, 'ffff', { label: 'Bottom', placement: place.plateXY(0, 0, -t) });
+  b.rectangularWall(x, y, 'ffff', { label: 'Bottom', thickness: tf, placement: place.plateXY(0, 0, -tf) });
 
   return finishModel(b);
 }
@@ -51,7 +53,7 @@ export const closedBox: GeneratorDef = {
       ],
     },
     rowEngravingGroup,
-    materialGroup,
+    materialWithFloorGroup,
     fingerJointGroup,
   ],
   build,

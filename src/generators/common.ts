@@ -197,3 +197,22 @@ export function rowEngraving(b: Boxes, v: ParamValues): RowEngraving {
   };
   return { sides, rows };
 }
+
+/** Separate floor thickness (0 = same as the walls), for generators that support it. */
+export const floorThicknessParam: ParamDef = {
+  id: 'floor_thickness',
+  label: 'Floor thickness',
+  type: 'number',
+  default: 0,
+  unit: 'mm',
+  min: 0,
+  max: 30,
+  step: 0.1,
+  help: 'Cut the floor from a different material thickness (0 = same as the walls)',
+};
+
+/** The material group with the floor thickness option added. */
+export const materialWithFloorGroup: ParamGroup = { ...materialGroup, params: [...materialGroup.params, floorThicknessParam] };
+
+/** Floor thickness in mm (the wall thickness when not set). */
+export const floorThickness = (v: ParamValues): number => Number(v.floor_thickness) || Number(v.thickness);

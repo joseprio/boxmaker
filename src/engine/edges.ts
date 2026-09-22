@@ -186,7 +186,7 @@ export class FingerHoleEdge extends BaseEdge {
   draw(length: number): void {
     const dist = this.settings.edge_width;
     this.boxes.saved(() => {
-      this.boxes.fingerHolesAt(0, dist + this.settings.thickness / 2, length, 0);
+      new FingerHoles(this.boxes, this.settings).draw(0, dist + this.settings.thickness / 2, length, 0);
     });
     this.boxes.edge(length);
   }
@@ -208,8 +208,15 @@ export class StackableBaseEdge extends BaseEdge {
   constructor(
     boxes: Boxes,
     public settings: StackableSettings,
+    /** finger settings for the holes; by default the box's own */
+    protected holeSettings?: FingerJointSettings,
   ) {
     super(boxes);
+  }
+
+  protected holes(y: number, length: number): void {
+    if (this.holeSettings) new FingerHoles(this.boxes, this.holeSettings).draw(0, y, length, 0);
+    else this.boxes.fingerHolesAt(0, y, length, 0);
   }
 
   draw(length: number): void {
@@ -245,7 +252,7 @@ export class StackableEdge extends StackableBaseEdge {
 
   override draw(length: number): void {
     const s = this.settings;
-    this.boxes.fingerHolesAt(0, s.height + s.holedistance + 0.5 * this.boxes.thickness, length, 0);
+    this.holes(s.height + s.holedistance + 0.5 * s.thickness, length);
     super.draw(length);
   }
 }
@@ -276,7 +283,7 @@ export class StackableHoleEdgeTop extends StackableBaseEdge {
 
   override draw(length: number): void {
     const s = this.settings;
-    this.boxes.fingerHolesAt(0, s.holedistance + 0.5 * this.boxes.thickness, length, 0);
+    this.holes(s.holedistance + 0.5 * s.thickness, length);
     super.draw(length);
   }
 }
@@ -730,3 +737,4 @@ export class CabinetHingeEdge extends BaseEdge {
     if (starts.length === 1) this.boxes.edge(starts[0]);
   }
 }
+

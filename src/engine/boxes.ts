@@ -18,6 +18,7 @@ import {
 import { dedupe, nearlyEqual, signedArea, type Vec2, type Vec3 } from './geometry';
 import { pathFrame, type Part, type PathSegment, type Placement } from './part';
 import {
+  defaultFingerJointParams,
   DoveTailSettings,
   FingerJointSettings,
   FlexSettings,
@@ -44,6 +45,8 @@ export interface WallOptions {
   label?: string;
   group?: string;
   placement?: Placement;
+  /** material thickness of this part, if not the box's (e.g. a thicker floor) */
+  thickness?: number;
 }
 
 export interface BoxesOptions {
@@ -97,15 +100,18 @@ export class Boxes {
   readonly fingerJointSettings: FingerJointSettings;
   readonly stackableSettings: StackableSettings;
   private fingerJointParams: Partial<FingerJointParams>;
+  private stackableParams: Partial<StackableParams>;
   protected turtle = new Turtle();
   private fingerHoles: FingerHoles;
   private currentLabel = '';
   private currentGroup = 'box';
+  private currentThickness: number | undefined;
 
   constructor(opts: BoxesOptions) {
     this.thickness = opts.thickness;
     this.burn = opts.burn ?? 0.1;
     this.fingerJointParams = opts.fingerJoint ?? {};
+    this.stackableParams = opts.stackable ?? {};
     this.fingerJointSettings = new FingerJointSettings(this.thickness, opts.fingerJoint);
     this.stackableSettings = new StackableSettings(this.thickness, opts.stackable);
     this.fingerHoles = new FingerHoles(this, this.fingerJointSettings);
@@ -138,6 +144,28 @@ export class Boxes {
     s.angle = angle;
     this.addEdge(new FingerJointEdge(this, s), chars[0]);
     this.addEdge(new FingerJointEdgeCounterPart(this, s), chars[1]);
+  }
+
+  /**
+   * Edges for the walls' bottom where they meet a floor `floorThickness` thick
+   * (F: finger joints, h: finger holes, s: stackable with finger holes). The
+   * fingers keep the walls' spacing so they still mate with the floor's 'f'
+   * edges; only their depth and the holes follow the floor. Other characters
+   * are returned as the normal edge.
+   */
+  floorEdge(spec: EdgeSpec, floorThickness: number): EdgeSpec {
+    if (typeof spec !== 'string' || Math.abs(floorThickness - this.thickness) < 1e-9 || !'Fhs'.includes(spec)) return spec;
+    const fs = new FingerJointSettings(this.thickness, this.fingerJointParams);
+    fs.thickness = floorThickness;
+    fs.width = (this.fingerJointParams.width ?? defaultFingerJointParams.width) * floorThickness;
+    if (spec === 'F') return new FingerJointEdgeCounterPart(this, fs);
+    if (spec === 'h') return new FingerHoleEdge(this, fs);
+    const ss = new StackableSettings(floorThickness, this.stackableParams);
+    // stackable sizes stay relative to the walls
+    ss.height = this.stackableSettings.height;
+    ss.width = this.stackableSettings.width;
+    ss.holedistance = this.stackableSettings.holedistance;
+    return new StackableEdge(this, ss, fs);
   }
 
   getEdge(e: EdgeSpec): BaseEdge {
@@ -348,10 +376,11 @@ export class Boxes {
   // Parts
   // ------------------------------------------------------------------
 
-  beginPart(label = '', group = 'box'): void {
+  beginPart(label = '', group = 'box', thickness?: number): void {
     this.turtle.reset();
     this.currentLabel = label;
     this.currentGroup = group;
+    this.currentThickness = thickness;
   }
 
   endPart(placement?: Placement): Part {
@@ -383,7 +412,7 @@ export class Boxes {
       holes,
       openPaths: [...open, ...this.turtle.etches],
       cuts: this.turtle.cuts,
-      thickness: this.thickness,
+      thickness: this.currentThickness ?? this.thickness,
       placement,
       group: this.currentGroup,
     };
@@ -394,7 +423,7 @@ export class Boxes {
 
   /** Draw an arbitrary part with the turtle; local (0,0) is where `draw` starts. */
   freePart(draw: () => void, opts: WallOptions = {}): Part {
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     draw();
     return this.endPart(opts.placement);
   }
@@ -410,7 +439,7 @@ export class Boxes {
     edges = [...edges, ...edges];
     const ignore = opts.ignoreWidths ?? [];
 
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     // start on the baseline of the bottom edge, at the nominal left corner
     this.moveTo(0, -edges[0].startWidth());
     const lengths = [x, y, x, y];
@@ -444,7 +473,7 @@ export class Boxes {
     const t = this.thickness;
     const b = this.closePolygon(borders);
 
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     let lengthCorrection = 0;
     for (let i = 0; i < b.length; i += 2) {
       this.cc(opts.callback, i / 2);
@@ -473,7 +502,7 @@ export class Boxes {
     const a = (Math.atan((h1 - h0) / w) * 180) / Math.PI;
     const l = Math.hypot(h0 - h1, w);
 
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     this.moveTo(0, -edges[0].startWidth());
     this.cc(opts.callback, 0, 0, edges[0].startWidth());
     edges[0].draw(w);
@@ -527,7 +556,7 @@ export class Boxes {
     let edges = specs.map((e) => this.getEdge(e));
     edges = [...edges, ...edges];
 
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     this.moveTo(0, -edges[0].startWidth());
     if (opts.hole) this.hole(side / 2, h + edges[0].startWidth(), opts.hole / 2);
     this.cc(opts.callback, 0, side / 2, h + edges[0].startWidth());
@@ -629,7 +658,7 @@ export class Boxes {
     const e = this.getEdge(edgeSpec);
     const ext = opts.extendCorners ?? true;
     const pieces = Math.min(opts.wallpieces ?? 1, 4);
-    this.beginPart(opts.label, opts.group);
+    this.beginPart(opts.label, opts.group, opts.thickness);
     this.moveTo(r, -e.startWidth());
     let wallcount = 0;
     [x - 2 * r, y - 2 * r, x - 2 * r, y - 2 * r].forEach((l, nr) => {
