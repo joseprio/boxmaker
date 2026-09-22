@@ -82,3 +82,19 @@ describe('floor thickness', () => {
     expect(JSON.stringify(a.parts.map((p) => [p.outline, p.holes]))).toBe(JSON.stringify(b.parts.map((p) => [p.outline, p.holes])));
   });
 });
+
+describe('sheets per material thickness', () => {
+  it('puts a thicker floor on its own sheet and file', async () => {
+    const { partsByThickness } = await import('./layout');
+    const { toSVG } = await import('./export');
+    const m = build('universalbox', {});
+    const groups = partsByThickness(m.parts);
+    expect(groups.map((g) => g.thickness)).toEqual([t, tf]);
+    expect(groups[1].parts.map((p) => p.label)).toEqual(['bottom']);
+    expect(groups[0].parts.every((p) => p.thickness === t)).toBe(true);
+    expect(toSVG(groups[1].parts, { burn: 0.1 })).toContain('material thickness: 6 mm');
+    // one thickness: one sheet, as before
+    const g = generators.find((d) => d.id === 'universalbox')!;
+    expect(partsByThickness(g.build(defaultValues(g)).parts)).toHaveLength(1);
+  });
+});

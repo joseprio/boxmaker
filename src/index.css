@@ -402,14 +402,30 @@ h1 {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
+  gap: 12px;
   padding: 12px;
 }
 
-.sheet-preview svg {
+/* one sheet per material thickness, side by side (stacked on narrow screens) */
+.sheet {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet svg {
   flex: 1;
   min-height: 0;
   width: 100%;
+}
+
+@media (max-width: 700px) {
+  .sheet-preview {
+    flex-direction: column;
+  }
 }
 
 .sheet-size {

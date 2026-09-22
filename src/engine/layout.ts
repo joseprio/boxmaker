@@ -56,3 +56,26 @@ export function cutContours(part: Part, burn: number): { outline: Vec2[]; holes:
   });
   return { outline, holes };
 }
+
+/** Parts cut from the same material thickness. */
+export interface MaterialGroup {
+  thickness: number;
+  parts: Part[];
+}
+
+/**
+ * Split parts by material thickness, one group per sheet to cut. The group
+ * with the most parts (normally the walls) comes first.
+ */
+export function partsByThickness(parts: Part[]): MaterialGroup[] {
+  const groups: MaterialGroup[] = [];
+  for (const p of parts) {
+    const g = groups.find((q) => Math.abs(q.thickness - p.thickness) < 1e-6);
+    if (g) g.parts.push(p);
+    else groups.push({ thickness: p.thickness, parts: [p] });
+  }
+  return groups.sort((a, b) => b.parts.length - a.parts.length || a.thickness - b.thickness);
+}
+
+/** "3", "2.5", "1.25" (mm, without trailing zeros). */
+export const formatThickness = (t: number): string => String(Math.round(t * 100) / 100);

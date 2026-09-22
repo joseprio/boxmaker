@@ -1,5 +1,5 @@
 import type { Vec2 } from './geometry';
-import { cutContours, layoutParts, type Sheet } from './layout';
+import { cutContours, formatThickness, layoutParts, type Sheet } from './layout';
 import type { Part } from './part';
 
 const fmt = (n: number): string => (Math.round(n * 1000) / 1000).toString();
@@ -25,6 +25,8 @@ export function toSVG(parts: Part[], opts: ExportOptions): string {
   lines.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">`,
   );
+  const thicknesses = [...new Set(parts.map((p) => formatThickness(p.thickness)))];
+  lines.push(`  <!-- material thickness: ${thicknesses.join(', ')} mm -->`);
   lines.push(`  <g id="cut" fill="none" stroke="#000000" stroke-width="0.1" stroke-linejoin="round">`);
   for (const pp of sheet.parts) {
     const { outline, holes } = cutContours(pp.part, opts.burn);

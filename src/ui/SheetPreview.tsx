@@ -1,32 +1,34 @@
 import { useMemo } from 'react';
-import { cutContours, layoutParts } from '../engine/layout';
+import { cutContours, formatThickness, layoutParts, partsByThickness } from '../engine/layout';
+import type { Part } from '../engine/part';
 import type { BoxModel } from '../generators/types';
 
-/** Inline SVG rendering of the packed cutting sheet. */
-export function SheetPreview({ model }: { model: BoxModel }) {
-  const sheet = useMemo(() => layoutParts(model.parts), [model]);
+/** One packed cutting sheet. */
+function Sheet({ parts, burn, caption }: { parts: Part[]; burn: number; caption: string }) {
+  const sheet = useMemo(() => layoutParts(parts), [parts]);
   const paths = useMemo(
     () =>
       sheet.parts.map((pp) => {
-        const { outline, holes } = cutContours(pp.part, model.burn);
-        const toD = (pts: { x: number; y: number }[]) =>
-          pts.map((p, i) => `${i ? 'L' : 'M'}${(p.x + pp.dx).toFixed(2)} ${(sheet.height - (p.y + pp.dy)).toFixed(2)}`).join(' ') + 'Z';
+        const { outline, holes } = cutContours(pp.part, burn);
+        const line = (pts: { x: number; y: number }[]) =>
+          pts.map((p, i) => `${i ? 'L' : 'M'}${(p.x + pp.dx).toFixed(2)} ${(sheet.height - (p.y + pp.dy)).toFixed(2)}`).join(' ');
         return {
           label: pp.part.label,
-          outline: toD(outline),
-          holes: holes.map(toD),
-          cuts: pp.part.cuts.map((c) => c.map((p, i) => `${i ? 'L' : 'M'}${(p.x + pp.dx).toFixed(2)} ${(sheet.height - (p.y + pp.dy)).toFixed(2)}`).join(' ')),
-          engrave: pp.part.openPaths.map((c) => c.map((p, i) => `${i ? 'L' : 'M'}${(p.x + pp.dx).toFixed(2)} ${(sheet.height - (p.y + pp.dy)).toFixed(2)}`).join(' ')),
+          outline: line(outline) + 'Z',
+          holes: holes.map((h) => line(h) + 'Z'),
+          cuts: pp.part.cuts.map(line),
+          engrave: pp.part.openPaths.map(line),
           cx: (pp.bounds.minX + pp.bounds.maxX) / 2 + pp.dx,
           cy: sheet.height - ((pp.bounds.minY + pp.bounds.maxY) / 2 + pp.dy),
         };
       }),
-    [sheet, model.burn],
+    [sheet, burn],
   );
   const fs = Math.max(sheet.width, sheet.height) / 45;
   return (
-    <div className="sheet-preview">
-      <svg viewBox={`0 0 ${sheet.width} ${sheet.height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cutting layout">
+    // share of the row in proportion to the sheet's width, so side by side sheets are drawn to the same scale
+    <figure className="sheet" style={{ flexGrow: sheet.width }}>
+      <svg viewBox={`0 0 ${sheet.width} ${sheet.height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={`Cutting layout, ${caption}`}>
         <rect x={0} y={0} width={sheet.width} height={sheet.height} fill="#fffdf8" stroke="#d8d0c0" strokeWidth={0.5} />
         {paths.map((p, i) => (
           <g key={i}>
@@ -42,9 +44,21 @@ export function SheetPreview({ model }: { model: BoxModel }) {
           </g>
         ))}
       </svg>
-      <div className="sheet-size">
-        Sheet: {sheet.width.toFixed(0)} x {sheet.height.toFixed(0)} mm · {model.parts.length} parts
-      </div>
+      <figcaption className="sheet-size">
+        {caption}: {sheet.width.toFixed(0)} x {sheet.height.toFixed(0)} mm · {parts.length} parts
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Inline SVG rendering of the packed cutting sheets, one per material thickness. */
+export function SheetPreview({ model }: { model: BoxModel }) {
+  const groups = useMemo(() => partsByThickness(model.parts), [model]);
+  return (
+    <div className="sheet-preview">
+      {groups.map((g) => (
+        <Sheet key={g.thickness} parts={g.parts} burn={model.burn} caption={groups.length > 1 ? `${formatThickness(g.thickness)} mm sheet` : 'Sheet'} />
+      ))}
     </div>
   );
 }

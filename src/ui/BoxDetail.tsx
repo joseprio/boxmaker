@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { toDXF, toSVG } from '../engine/export';
+import { formatThickness, partsByThickness } from '../engine/layout';
 import { findGenerator } from '../generators';
 import { defaultValues, type BoxModel, type GeneratorDef, type ParamValue, type ParamValues } from '../generators/types';
 import { BoxViewer } from '../viewer/BoxViewer';
@@ -97,8 +98,18 @@ function BoxDetailInner({ def }: { def: GeneratorDef }) {
   }, [model]);
   const shown = model ?? lastGood;
 
-  const exportSVG = () => shown && download(`${def.id}.svg`, toSVG(shown.parts, { burn: shown.burn }), 'image/svg+xml');
-  const exportDXF = () => shown && download(`${def.id}.dxf`, toDXF(shown.parts, { burn: shown.burn }), 'application/dxf');
+  // one file per material thickness (e.g. walls and a thicker floor), named after it
+  const sheets = shown ? partsByThickness(shown.parts) : [];
+  const exportAll = (ext: string, make: typeof toSVG, type: string) => {
+    if (!shown) return;
+    sheets.forEach((g, i) => {
+      const name = sheets.length > 1 ? `${def.id}-${formatThickness(g.thickness)}mm.${ext}` : `${def.id}.${ext}`;
+      // browsers may drop downloads started in the same tick
+      setTimeout(() => download(name, make(g.parts, { burn: shown.burn }), type), i * 400);
+    });
+  };
+  const exportSVG = () => exportAll('svg', toSVG, 'image/svg+xml');
+  const exportDXF = () => exportAll('dxf', toDXF, 'application/dxf');
 
   return (
     <main className="detail">
@@ -145,11 +156,13 @@ function BoxDetailInner({ def }: { def: GeneratorDef }) {
               {panelOpen ? 'Hide options' : 'Options'}
             </button>
             <div className="export">
-              <button type="button" className="primary" onClick={exportSVG} disabled={!shown}>
+              <button type="button" className="primary" onClick={exportSVG} disabled={!shown} title={sheets.length > 1 ? 'One file per material thickness' : undefined}>
                 SVG
+                {sheets.length > 1 && ` ×${sheets.length}`}
               </button>
-              <button type="button" onClick={exportDXF} disabled={!shown}>
+              <button type="button" onClick={exportDXF} disabled={!shown} title={sheets.length > 1 ? 'One file per material thickness' : undefined}>
                 DXF
+                {sheets.length > 1 && ` ×${sheets.length}`}
               </button>
             </div>
           </div>

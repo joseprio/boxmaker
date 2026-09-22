@@ -17,6 +17,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
   layer; flex cuts are cut lines.
 - **Floor thickness** (Universal, Closed and Open Box): cut the floor from thicker or thinner material;
   the walls' bottom joints follow it.
+- **One sheet per material thickness**: parts of different thicknesses are laid out and exported
+  separately (`<box>-3mm.svg`, `<box>-6mm.svg`, ...).
 - **Engraved rows** (Universal, Closed and Open Box): bands of a set width and spacing on the inside of
   two opposite walls, e.g. guides for CD storage.
 - **Engraved numbers** (Hinge Card Box): single-line strokes for vector engraving or merged outlines for
