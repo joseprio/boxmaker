@@ -29,6 +29,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
 | Card Box | Playing card box with a sliding lid and finger notches |
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
+| Hinge Box | Lid on laser-cut cabinet hinges turning on a metal pin; optional split lid |
+| Integrated Hinge Box | Lid pivoting on pins cut into its back wall, no hardware |
 | Regular Box | Box with a regular polygon base (triangle → hexadecagon) |
 | Angled Box | Elongated box with both ends cornered, angled finger joints |
 | Rounded Box | Rounded vertical edges: a flex wall wraps round the floor and top, optional shelves and lid |
@@ -64,6 +66,8 @@ and routing uses hash URLs, so it also works from a subdirectory or from `file:/
 - `lids.ts` — the lid styles and handles from `boxes/lids.py`.
 - Flex (living hinge) cuts, dove tails, `roundedPlate` and `surroundingWall` for walls that wrap
   round rounded plates. Flex cuts are open cut lines (`Part.cuts`), exported with the contours.
+- Chest hinges (integrated pins) and cabinet hinges (separate eyes). Hinged generators take a
+  "lid open" angle that only rotates the lid in the preview (`rotatePlacement`).
 - `layout.ts` / `export.ts` — shelf packing of the parts plus SVG/DXF writers.
 
 The one real addition over upstream is **placement**: each part carries an optional origin and two

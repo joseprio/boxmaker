@@ -207,3 +207,106 @@ export class DoveTailSettings {
     this.radius = p.radius * thickness;
   }
 }
+
+export interface ChestHingeParams {
+  /** radius of the disc rotating in the hinge (multiples of thickness) */
+  pin_height: number;
+  /** thickness of the arc holding the pin in place (multiples of thickness) */
+  hinge_strength: number;
+  /** play in the hinge (multiples of thickness) */
+  play: number;
+}
+
+export const defaultChestHingeParams: ChestHingeParams = {
+  pin_height: 2.0,
+  hinge_strength: 1.0,
+  play: 0.1,
+};
+
+export class ChestHingeSettings {
+  thickness: number;
+  pin_height: number;
+  hinge_strength: number;
+  play: number;
+
+  constructor(thickness: number, params: Partial<ChestHingeParams> = {}) {
+    const p = { ...defaultChestHingeParams, ...params };
+    if (p.pin_height < 1.2) throw new Error('Chest hinge: pin height must be at least 1.2 x thickness');
+    this.thickness = thickness;
+    this.pin_height = p.pin_height * thickness;
+    this.hinge_strength = p.hinge_strength * thickness;
+    this.play = p.play * thickness;
+  }
+
+  /** height of the rectangular pin that turns in the round hole */
+  pinheight(): number {
+    return Math.sqrt((0.9 * this.pin_height) ** 2 - this.thickness ** 2);
+  }
+}
+
+export interface CabinetHingeParams {
+  /** diameter of the pin hole in mm */
+  bore: number;
+  /** pieces per hinge */
+  eyes_per_hinge: number;
+  /** number of hinges per edge */
+  hinges: number;
+  /** radius of the eye (multiples of thickness) */
+  eye: number;
+  /** space between eyes (multiples of thickness) */
+  play: number;
+  /** minimum space around the hinge (multiples of thickness) */
+  spacing: number;
+}
+
+export const defaultCabinetHingeParams: CabinetHingeParams = {
+  bore: 3.2,
+  eyes_per_hinge: 5,
+  hinges: 2,
+  eye: 1.5,
+  play: 0.05,
+  spacing: 2.0,
+};
+
+export class CabinetHingeSettings {
+  thickness: number;
+  bore: number;
+  eyes_per_hinge: number;
+  hinges: number;
+  eye: number;
+  play: number;
+  spacing: number;
+
+  constructor(thickness: number, params: Partial<CabinetHingeParams> = {}) {
+    const p = { ...defaultCabinetHingeParams, ...params };
+    this.thickness = thickness;
+    this.bore = p.bore;
+    this.eyes_per_hinge = Math.max(2, Math.round(p.eyes_per_hinge));
+    this.hinges = Math.max(1, Math.round(p.hinges));
+    this.eye = p.eye * thickness;
+    this.play = p.play * thickness;
+    this.spacing = p.spacing * thickness;
+  }
+
+  /** length of edge one hinge takes */
+  width(): number {
+    return (this.thickness + this.play) * this.eyes_per_hinge + this.play + 2 * this.spacing;
+  }
+
+  /**
+   * Start of each hinge along an edge of length `l` (as the edge draws them),
+   * and centre of eye `i` relative to its hinge start.
+   */
+  layout(l: number): number[] {
+    const w = this.width();
+    const hn = Math.min(this.hinges, Math.floor(l / w));
+    if (hn < 1) throw new Error('Edge too short for the hinges');
+    if (hn === 1) return [(l - w) / 2];
+    const gap = (l - hn * w) / (hn - 1);
+    return Array.from({ length: hn }, (_, j) => j * (w + gap));
+  }
+
+  eyeCentre(i: number): number {
+    return this.spacing + 0.5 * this.thickness + this.play + i * (this.thickness + this.play);
+  }
+}

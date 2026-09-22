@@ -1,5 +1,5 @@
 import type { Boxes } from './boxes';
-import { DoveTailSettings, FingerJointSettings, FlexSettings, StackableSettings } from './settings';
+import { CabinetHingeSettings, ChestHingeSettings, DoveTailSettings, FingerJointSettings, FlexSettings, StackableSettings } from './settings';
 
 /**
  * An edge draws one side of a part. Ported from boxes.py: `startWidth` is how
@@ -537,4 +537,176 @@ export class DoveTailJointCounterPart extends DoveTailJoint {
   override readonly char = 'D';
   override readonly description = 'Dove Tail Joint (opposing side)';
   override positive = false;
+}
+
+// ---------------------------------------------------------------------------
+// Chest hinge (integrated hinge: the lid turns on pins in the side walls)
+// ---------------------------------------------------------------------------
+
+/** Side wall top with the hinge eye: 'o' has it at the start, 'O' (reversed) at the end. */
+export class ChestHinge extends BaseEdge {
+  readonly char: string;
+  readonly description = 'Edge with chest hinge';
+
+  constructor(
+    boxes: Boxes,
+    public settings: ChestHingeSettings,
+    protected reversed = false,
+  ) {
+    super(boxes);
+    this.char = reversed ? 'O' : 'o';
+  }
+
+  draw(l: number): void {
+    const { thickness: t, pin_height: p, hinge_strength: s } = this.settings;
+    // round hole for the lid's pin to turn in (the rectangular seat upstream also
+    // cuts lies entirely inside it)
+    if (this.reversed) this.boxes.hole(l + t, 0, p);
+    else this.boxes.hole(-t, -s - p, p);
+    const poly: Array<number | [number, number]> = [0, -180, t, [270, p + s], 0, -90, l + t - p - s];
+    this.boxes.polyline(...(this.reversed ? [...poly].reverse() : poly));
+  }
+
+  margin(): number {
+    return this.reversed ? 0 : this.settings.pin_height + this.settings.hinge_strength;
+  }
+
+  startWidth(): number {
+    return this.reversed ? this.settings.pin_height + this.settings.hinge_strength : 0;
+  }
+
+  endWidth(): number {
+    return this.reversed ? 0 : this.settings.pin_height + this.settings.hinge_strength;
+  }
+}
+
+/** Lid side wall edge above a chest hinge ('p' / reversed 'P'). */
+export class ChestHingeTop extends ChestHinge {
+  override readonly char: string;
+
+  constructor(boxes: Boxes, settings: ChestHingeSettings, reversed = false) {
+    super(boxes, settings, reversed);
+    this.char = reversed ? 'P' : 'p';
+  }
+
+  private get width(): number {
+    return this.settings.play + this.settings.pin_height + this.settings.hinge_strength;
+  }
+
+  override draw(l: number): void {
+    const { thickness: t } = this.settings;
+    const w = this.width;
+    const poly: Array<number | [number, number]> = [0, -180, t, -180, 0, [-90, w], 0, 90, l + t - w];
+    this.boxes.polyline(...(this.reversed ? [...poly].reverse() : poly));
+  }
+
+  override margin(): number {
+    return this.reversed ? 0 : this.width;
+  }
+
+  override startWidth(): number {
+    return this.reversed ? this.width : 0;
+  }
+
+  override endWidth(): number {
+    return this.reversed ? 0 : this.width;
+  }
+}
+
+/** Lid back edge with the pins sticking out at both ends ('q'). */
+export class ChestHingePin extends BaseEdge {
+  readonly char = 'q';
+  readonly description = 'Edge with pins for a chest hinge';
+
+  constructor(
+    boxes: Boxes,
+    public settings: ChestHingeSettings,
+  ) {
+    super(boxes);
+  }
+
+  draw(l: number): void {
+    const { thickness: t, pin_height: p, hinge_strength: s, play } = this.settings;
+    const pinh = this.settings.pinheight();
+    const poly = [0, -90, play + s + p - pinh, -90, t, 90, pinh, 90];
+    this.boxes.polyline(...poly);
+    this.boxes.polyline(l + 2 * t, ...[...poly].reverse());
+  }
+
+  margin(): number {
+    return this.settings.play + this.settings.pin_height + this.settings.hinge_strength;
+  }
+}
+
+/** Plain edge opposite a chest hinge ('Q'). */
+export class ChestHingeFront extends BaseEdge {
+  readonly char = 'Q';
+  readonly description = 'Edge opposing a chest hinge';
+
+  constructor(
+    boxes: Boxes,
+    public settings: ChestHingeSettings,
+  ) {
+    super(boxes);
+  }
+
+  draw(length: number): void {
+    this.boxes.edge(length);
+  }
+
+  startWidth(): number {
+    return this.settings.pin_height + this.settings.hinge_strength;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cabinet hinge (separate eyes on a metal pin), inside style
+// ---------------------------------------------------------------------------
+
+/**
+ * Edge cut for cabinet hinges: 'u' on the box, 'U' (top) on the lid. Each
+ * hinge is a notch with slots and square holes holding alternate eyes.
+ */
+export class CabinetHingeEdge extends BaseEdge {
+  readonly char: string;
+  readonly description = 'Edge with cabinet hinges';
+
+  constructor(
+    boxes: Boxes,
+    public settings: CabinetHingeSettings,
+    private top = false,
+  ) {
+    super(boxes);
+    this.char = top ? 'U' : 'u';
+  }
+
+  private poly(): number[] {
+    const { eyes_per_hinge: n, play: p, eye: e, thickness: t, spacing } = this.settings;
+    const top = this.top ? 1 : 0;
+    const poly: number[] = top ? [spacing, 90, e + p] : [spacing + p, 90, e + p, 0];
+    for (let i = 0; i < n; i++) {
+      if ((i % 2) ^ top) poly.push(...(i === 0 ? [-90, t + 2 * p, 90] : [90, t + 2 * p, 90]));
+      else poly.push(t - p, -90, t, -90, t - p);
+    }
+    if ((n % 2) ^ top) poly.push(0, e + p, 90, p + spacing);
+    else poly.splice(poly.length - 1, 1, -90, e + p, 90, spacing);
+    return poly;
+  }
+
+  draw(l: number): void {
+    const { eyes_per_hinge: n, eye: e, thickness: t } = this.settings;
+    const top = this.top ? 1 : 0;
+    const w = this.settings.width();
+    const starts = this.settings.layout(l);
+    const poly = this.poly();
+    if (starts.length === 1) this.boxes.edge(starts[0]);
+    starts.forEach((_, j) => {
+      for (let i = 0; i < n; i++) {
+        if (!((i % 2) ^ top)) this.boxes.rectangularHole(this.settings.eyeCentre(i), e + 2.5 * t, t, t);
+      }
+      this.boxes.polyline(...poly);
+      if (j < starts.length - 1) this.boxes.edge((l - starts.length * w) / (starts.length - 1));
+    });
+    if (starts.length === 1) this.boxes.edge(starts[0]);
+  }
 }

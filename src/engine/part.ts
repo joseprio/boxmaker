@@ -105,3 +105,18 @@ export interface Part {
   /** Logical group for the viewer (e.g. "box", "lid", "divider"). */
   group: string;
 }
+
+/** Rotate a placement by `degrees` about the axis through `center` along the unit vector `axis`. */
+export function rotatePlacement(p: Placement, center: V3, axis: V3, degrees: number): Placement {
+  if (!degrees) return p;
+  const a = (degrees * Math.PI) / 180;
+  const ca = Math.cos(a);
+  const sa = Math.sin(a);
+  const rot = (w: V3): V3 => {
+    const d = axis.x * w.x + axis.y * w.y + axis.z * w.z;
+    const c = cross(axis, w);
+    return { x: w.x * ca + c.x * sa + axis.x * d * (1 - ca), y: w.y * ca + c.y * sa + axis.y * d * (1 - ca), z: w.z * ca + c.z * sa + axis.z * d * (1 - ca) };
+  };
+  const rel = rot({ x: p.origin.x - center.x, y: p.origin.y - center.y, z: p.origin.z - center.z });
+  return { ...p, origin: { x: center.x + rel.x, y: center.y + rel.y, z: center.z + rel.z }, u: rot(p.u), v: rot(p.v) };
+}
