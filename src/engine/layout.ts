@@ -15,19 +15,15 @@ export interface Sheet {
   parts: PlacedPart[];
 }
 
-/**
- * Simple shelf packing: parts sorted by height, placed left to right in rows
- * whose width is limited to roughly the square root of the total area.
- */
-export function layoutParts(parts: Part[], spacing = 3, margin = 5): Sheet {
-  const items = parts.map((part) => {
-    const bounds = boundsOf([part.outline]);
-    return { part, bounds, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY };
-  });
-  items.sort((a, b) => b.h - a.h || b.w - a.w);
-  const totalArea = items.reduce((s, i) => s + (i.w + spacing) * (i.h + spacing), 0);
-  const maxW = Math.max(Math.sqrt(totalArea) * 1.3, ...items.map((i) => i.w)) + spacing;
+interface Item {
+  part: Part;
+  bounds: Bounds;
+  w: number;
+  h: number;
+}
 
+/** Shelf packing: rows filled left to right up to `maxW`, tallest parts first. */
+function shelfPack(items: Item[], maxW: number, spacing: number, margin: number): Sheet {
   const placed: PlacedPart[] = [];
   let x = margin;
   let y = margin;
@@ -45,6 +41,37 @@ export function layoutParts(parts: Part[], spacing = 3, margin = 5): Sheet {
     sheetW = Math.max(sheetW, x - spacing);
   }
   return { width: sheetW + margin, height: y + rowH + margin, parts: placed };
+}
+
+/**
+ * Pack the parts onto one sheet: shelf packing (tallest first, rows left to
+ * right), trying several row widths and keeping the smallest sheet, the
+ * squarer one on a near tie. This keeps a few small parts from widening the
+ * sheet next to one large part.
+ */
+export function layoutParts(parts: Part[], spacing = 3, margin = 5): Sheet {
+  const items: Item[] = parts.map((part) => {
+    const bounds = boundsOf([part.outline]);
+    return { part, bounds, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY };
+  });
+  items.sort((a, b) => b.h - a.h || b.w - a.w);
+  const totalArea = items.reduce((s, i) => s + (i.w + spacing) * (i.h + spacing), 0);
+  const widest = Math.max(0, ...items.map((i) => i.w));
+  const side = Math.sqrt(totalArea);
+  const candidates = [widest, ...[0.8, 1, 1.15, 1.3, 1.5, 1.8, 2.2].map((f) => side * f)].filter((w) => w >= widest).map((w) => w + spacing);
+  let best: Sheet | null = null;
+  for (const w of candidates) {
+    const sheet = shelfPack(items, w, spacing, margin);
+    if (!best) {
+      best = sheet;
+      continue;
+    }
+    const area = sheet.width * sheet.height;
+    const bestArea = best.width * best.height;
+    const squareness = (s: Sheet) => Math.max(s.width, s.height) / Math.min(s.width, s.height);
+    if (area < bestArea * 0.98 || (area < bestArea * 1.02 && squareness(sheet) < squareness(best))) best = sheet;
+  }
+  return best ?? { width: 2 * margin, height: 2 * margin, parts: [] };
 }
 
 /** Kerf-compensated contours for a part: outline grown, holes shrunk. */

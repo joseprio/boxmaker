@@ -6,6 +6,7 @@ import type { BoxModel } from '../generators/types';
 /** One packed cutting sheet. */
 function Sheet({ parts, burn, caption }: { parts: Part[]; burn: number; caption: string }) {
   const sheet = useMemo(() => layoutParts(parts), [parts]);
+  const fs = Math.max(sheet.width, sheet.height) / 45;
   const paths = useMemo(
     () =>
       sheet.parts.map((pp) => {
@@ -18,13 +19,14 @@ function Sheet({ parts, burn, caption }: { parts: Part[]; burn: number; caption:
           holes: holes.map((h) => line(h) + 'Z'),
           cuts: pp.part.cuts.map(line),
           engrave: pp.part.openPaths.map(line),
+          // only label parts the label fits inside
+          fits: pp.bounds.maxX - pp.bounds.minX > pp.part.label.length * fs * 0.6 && pp.bounds.maxY - pp.bounds.minY > fs * 1.4,
           cx: (pp.bounds.minX + pp.bounds.maxX) / 2 + pp.dx,
           cy: sheet.height - ((pp.bounds.minY + pp.bounds.maxY) / 2 + pp.dy),
         };
       }),
-    [sheet, burn],
+    [sheet, burn, fs],
   );
-  const fs = Math.max(sheet.width, sheet.height) / 45;
   return (
     // share of the row in proportion to the sheet's width, so side by side sheets are drawn to the same scale
     <figure className="sheet" style={{ flexGrow: sheet.width }}>
@@ -38,9 +40,12 @@ function Sheet({ parts, burn, caption }: { parts: Part[]; burn: number; caption:
             ))}
             {p.cuts.length > 0 && <path d={p.cuts.join(' ')} fill="none" stroke="#1d4ed8" strokeWidth={0.25} />}
             {p.engrave.length > 0 && <path d={p.engrave.join(' ')} fill="none" stroke="#c2410c" strokeWidth={0.3} />}
-            <text x={p.cx} y={p.cy} fontSize={fs} textAnchor="middle" dominantBaseline="middle" fill="#7a6a50">
-              {p.label}
-            </text>
+            {p.fits && (
+              <text x={p.cx} y={p.cy} fontSize={fs} textAnchor="middle" dominantBaseline="middle" fill="#7a6a50">
+                {p.label}
+              </text>
+            )}
+            <title>{p.label}</title>
           </g>
         ))}
       </svg>
