@@ -18,8 +18,8 @@ function valuesFromSearch(def: GeneratorDef, sp: URLSearchParams): ParamValues {
         if (!isNaN(n)) v[p.id] = n;
       } else if (p.type === 'boolean') v[p.id] = raw === '1' || raw === 'true';
       else if (p.type === 'sections') {
-        const s = parseSections(raw);
-        if (s.length) v[p.id] = s;
+        const s = parseSections(raw, p.allowZero);
+        if (s.some((n) => n > 0)) v[p.id] = s;
       } else v[p.id] = raw;
     }
   }
@@ -65,7 +65,7 @@ export function BoxDetail() {
       </main>
     );
   }
-  return <BoxDetailInner def={def} />;
+  return <BoxDetailInner key={def.id} def={def} />;
 }
 
 function BoxDetailInner({ def }: { def: GeneratorDef }) {

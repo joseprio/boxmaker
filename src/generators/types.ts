@@ -21,6 +21,8 @@ export interface ParamDef {
   step?: number;
   help?: string;
   options?: ParamOption[];
+  /** sections only: keep 0 entries (e.g. to add a slot at either end) */
+  allowZero?: boolean;
   /** Only show when another param has a given value. */
   showIf?: (values: ParamValues) => boolean;
 }

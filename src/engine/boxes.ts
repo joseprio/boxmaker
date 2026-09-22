@@ -53,6 +53,7 @@ export class Boxes {
   readonly parts: Part[] = [];
   readonly fingerJointSettings: FingerJointSettings;
   readonly stackableSettings: StackableSettings;
+  private fingerJointParams: Partial<FingerJointParams>;
   protected turtle = new Turtle();
   private fingerHoles: FingerHoles;
   private currentLabel = '';
@@ -61,6 +62,7 @@ export class Boxes {
   constructor(opts: BoxesOptions) {
     this.thickness = opts.thickness;
     this.burn = opts.burn ?? 0.1;
+    this.fingerJointParams = opts.fingerJoint ?? {};
     this.fingerJointSettings = new FingerJointSettings(this.thickness, opts.fingerJoint);
     this.stackableSettings = new StackableSettings(this.thickness, opts.stackable);
     this.fingerHoles = new FingerHoles(this, this.fingerJointSettings);
@@ -78,6 +80,17 @@ export class Boxes {
 
   addEdge(edge: BaseEdge, char = edge.char): void {
     this.edges.set(char, edge);
+  }
+
+  /**
+   * Register finger joint edges for walls meeting at `angle` degrees (like
+   * boxes.py `setValues(angle=...)` + `edgeObjects(chars="gG")`).
+   */
+  addAngledFingerJoints(angle: number, chars = 'gG'): void {
+    const s = new FingerJointSettings(this.thickness, this.fingerJointParams);
+    s.angle = angle;
+    this.addEdge(new FingerJointEdge(this, s), chars[0]);
+    this.addEdge(new FingerJointEdgeCounterPart(this, s), chars[1]);
   }
 
   getEdge(e: EdgeSpec): BaseEdge {
@@ -145,6 +158,31 @@ export class Boxes {
     this.saved(() => {
       this.moveTo(x + r, y, -90);
       this.corner(-360, r);
+    });
+  }
+
+  /**
+   * Pear shaped mounting hole for sliding over a screw head, pointing along
+   * `angle`. Without a head diameter it is a plain round hole.
+   */
+  mountingHole(x: number, y: number, dShaft: number, dHead = 0, angle = 0): void {
+    if (dShaft <= 0) return;
+    if (!dHead || dHead <= dShaft) {
+      this.hole(x, y, 0, dShaft);
+      return;
+    }
+    const rs = dShaft / 2;
+    const rh = dHead / 2;
+    const a = (Math.asin(rs / rh) * 180) / Math.PI;
+    this.saved(() => {
+      this.moveTo(x, y, angle);
+      this.moveTo(0, rs);
+      this.corner(-180, rs);
+      this.edge(2 * rs);
+      this.corner(90 - a);
+      this.corner(-360 + 2 * a, rh);
+      this.corner(90 - a);
+      this.edge(2 * rs);
     });
   }
 

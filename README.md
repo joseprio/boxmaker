@@ -25,10 +25,15 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Closed Box | Fully closed box; a building block to cut open yourself |
 | Open Box | The simplest tray-like box |
 | Type Tray | Grid of compartments with interlocking dividers and finger cut-outs |
+| Divider Tray | Slotted side pieces holding removable (optionally leaning) dividers |
+| Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
+| Card Box | Playing card box with a sliding lid and finger notches |
 | Sliding Lid Box | Lid sliding in rails, with a grip hole or lip |
 | Regular Box | Box with a regular polygon base (triangle → hexadecagon) |
+| Angled Box | Elongated box with both ends cornered, angled finger joints |
 | Display Shelf | Slanted shelves with front lips and dividers |
 | Stackable Bin | Open bin with a slanted front that stacks on its siblings |
+| Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
 | Uneven Height Box | Different height at each corner, with a matching lid |
 
 ## Development

@@ -35,3 +35,29 @@ describe('universal box variants', () => {
     }
   });
 });
+
+describe('ported tray and box variants', () => {
+  const variants: Record<string, Record<string, unknown>[]> = {
+    trayinsert: [{ draft_angle: 10 }, { x: 200, y: 180 }, { x: 155 }, { outside: true }],
+    angledbox: [1, 2, 5].flatMap((n) => ['none', 'angled hole', 'angled lid', 'angled lid2'].flatMap((top) => ['h', 'F', 'e'].map((bottom_edge) => ({ n, top, bottom_edge, x: 150, y: 80 })))),
+    bintray: [{ sh: [30, 60, 40], sx: [40] }, { outside: true }, { hole_head: 0 }],
+    cardbox: [{ openingdirection: 'right' }, { fingerhole: 'deep' }, { openingdirection: 'right', add_lidtopper: true, outside: true }],
+    dividertray: ['single', 'full', 'half', 'asymmetric'].flatMap((divider_style) =>
+      [{}, { slot_angle: 15 }, { sy: [0, 50, 50, 0] }, { left_wall: false }, { outside: true, bottom: true }].map((o) => ({ divider_style, ...o })),
+    ),
+  };
+  for (const [id, list] of Object.entries(variants)) {
+    it(id, () => {
+      const g = generators.find((d) => d.id === id)!;
+      for (const o of list) {
+        const model = g.build({ ...defaultValues(g), ...(o as object) });
+        for (const p of model.parts) {
+          const what = `${JSON.stringify(o)} ${p.label}`;
+          expect(signedArea(p.outline), what).toBeGreaterThan(0);
+          // every contour must close: stray open paths mean a broken outline
+          expect(p.openPaths, what).toHaveLength(0);
+        }
+      }
+    });
+  }
+});

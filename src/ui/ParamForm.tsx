@@ -7,8 +7,8 @@ interface Props {
   onChange: (id: string, value: ParamValue) => void;
 }
 
-/** Parse "50:40:30" or "3*50" style section lists. */
-export function parseSections(text: string): number[] {
+/** Parse "50:40:30" or "3*50" style section lists. Zero entries are dropped unless `allowZero`. */
+export function parseSections(text: string, allowZero = false): number[] {
   const out: number[] = [];
   for (const raw of text.split(/[:,;\s]+/)) {
     const tok = raw.trim();
@@ -20,7 +20,7 @@ export function parseSections(text: string): number[] {
       for (let i = 0; i < n; i++) out.push(v);
     } else {
       const v = parseFloat(tok);
-      if (!isNaN(v) && v > 0) out.push(v);
+      if (!isNaN(v) && (v > 0 || (allowZero && v === 0))) out.push(v);
     }
   }
   return out;
@@ -42,8 +42,8 @@ function SectionsInput({ def, value, onChange }: { def: ParamDef; value: number[
       placeholder="50:50:30 or 3*40"
       onChange={(e) => {
         setText(e.target.value);
-        const s = parseSections(e.target.value);
-        if (s.length) {
+        const s = parseSections(e.target.value, def.allowZero);
+        if (s.some((n) => n > 0)) {
           setBad(false);
           onChange(s);
         } else {
