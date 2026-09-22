@@ -51,9 +51,24 @@ function build(v: ParamValues): BoxModel {
   // turns about the X axis through (y + t, h): the pins' corners at the back.
   const turn = (p: Placement): Placement => rotatePlacement(p, { x: 0, y: y + t, z: h }, X, -num(v, 'lid_open'));
 
-  // box
-  b.rectangularWall(y, h - hy, 'FfOf', { label: 'left side', ignoreWidths: [2], placement: { origin: { x: 0, y, z: 0 }, u: neg(Y), v: Z } });
-  b.rectangularWall(y, h - hy, 'Ffof', { label: 'right side', ignoreWidths: [5], placement: { origin: { x, y: 0, z: 0 }, u: Y, v: Z } });
+  // box: the hinge edges cut round holes at the back top corners of the sides
+  const sides: Array<[string, string, Placement, number[]]> = [
+    ['left side', 'FfOf', { origin: { x: 0, y, z: 0 }, u: neg(Y), v: Z }, [2]],
+    ['right side', 'Ffof', { origin: { x, y: 0, z: 0 }, u: Y, v: Z }, [5]],
+  ];
+  for (const [label, edges, placement, ignoreWidths] of sides) {
+    b.rectangularWall(y, h - hy, edges, { label, ignoreWidths, placement });
+    // the disc cut out of the hole turns in it, holding the lid's pin in its slot
+    const hinge = b.getEdge(edges[2]) as ChestHinge;
+    const disc = hinge.discs[hinge.discs.length - 1];
+    b.freePart(
+      () => {
+        b.hole(disc.centre.x, disc.centre.y, disc.radius);
+        b.closedPath(disc.slot);
+      },
+      { label: `hinge disc ${label.split(' ')[0]}`, group: 'handle', placement: turn(placement) },
+    );
+  }
   b.rectangularWall(x, h, 'FFeF', { label: 'front', placement: place.wallXZ(0, 0, 0) });
   const back: EdgeSpec[] = ['F', new CompoundEdge(b, ['F', 'e'], [h - hy, hy]), 'e', new CompoundEdge(b, ['e', 'F'], [hy, h - hy])];
   b.rectangularWall(x, h, back, { label: 'back', placement: place.wallXZ(0, y + t, 0) });

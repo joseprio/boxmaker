@@ -30,6 +30,11 @@ export class Turtle {
     this.cuts = [];
   }
 
+  /** Move the frame back to the part origin (keeps the drawn paths and the saved stack). */
+  resetFrame(): void {
+    this.state = { x: 0, y: 0, a: 0 };
+  }
+
   /** Add a standalone cut line between two points of the local frame. */
   cutLine(x1: number, y1: number, x2: number, y2: number): void {
     this.cuts.push([this.local(x1, y1), this.local(x2, y2)]);

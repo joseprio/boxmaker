@@ -164,6 +164,25 @@ export class Boxes {
     this.turtle.moveTo(x, y, degrees);
   }
 
+  /** Current-frame point in part-local coordinates. */
+  localPoint(x: number, y: number): Vec2 {
+    return this.turtle.local(x, y);
+  }
+
+  /** Closed polygon through part-local points (ignores the current frame). */
+  closedPath(pts: Vec2[]): void {
+    this.saved(() => {
+      this.turtle.resetFrame();
+      pts.forEach((a, i) => {
+        const b = pts[(i + 1) % pts.length];
+        this.saved(() => {
+          this.moveTo(a.x, a.y, (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI);
+          this.edge(Math.hypot(b.x - a.x, b.y - a.y));
+        });
+      });
+    });
+  }
+
   /** Standalone cut line in the current frame (for flex patterns). */
   cutLine(x1: number, y1: number, x2: number, y2: number): void {
     this.turtle.cutLine(x1, y1, x2, y2);

@@ -1,4 +1,5 @@
 import type { Boxes } from './boxes';
+import type { Vec2 } from './geometry';
 import { CabinetHingeSettings, ChestHingeSettings, DoveTailSettings, FingerJointSettings, FlexSettings, StackableSettings } from './settings';
 
 /**
@@ -557,12 +558,31 @@ export class ChestHinge extends BaseEdge {
     this.char = reversed ? 'O' : 'o';
   }
 
+  /**
+   * Bearing discs of the hinges drawn so far, in part-local coordinates: the
+   * disc cut out of the round hole turns in it, holding the lid's pin in its
+   * rectangular slot. Generators make them into separate parts.
+   */
+  discs: Array<{ centre: Vec2; radius: number; slot: Vec2[] }> = [];
+
   draw(l: number): void {
     const { thickness: t, pin_height: p, hinge_strength: s } = this.settings;
-    // round hole for the lid's pin to turn in (the rectangular seat upstream also
-    // cuts lies entirely inside it)
-    if (this.reversed) this.boxes.hole(l + t, 0, p);
-    else this.boxes.hole(-t, -s - p, p);
+    const pinh = this.settings.pinheight();
+    const b = this.boxes;
+    // disc centre and slot (t x pinh, from the centre towards the lid's pin)
+    const [cx, cy] = this.reversed ? [l + t, 0] : [-t, -s - p];
+    const [sx0, sx1] = this.reversed ? [l, l + t] : [-t, 0];
+    b.hole(cx, cy, p);
+    this.discs.push({
+      centre: b.localPoint(cx, cy),
+      radius: p,
+      slot: [
+        [sx0, cy - pinh],
+        [sx1, cy - pinh],
+        [sx1, cy],
+        [sx0, cy],
+      ].map(([x, y]) => b.localPoint(x, y)),
+    });
     const poly: Array<number | [number, number]> = [0, -180, t, [270, p + s], 0, -90, l + t - p - s];
     this.boxes.polyline(...(this.reversed ? [...poly].reverse() : poly));
   }

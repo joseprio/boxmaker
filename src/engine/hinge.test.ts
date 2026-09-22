@@ -28,6 +28,43 @@ describe('integrated hinge box', () => {
         expect(c.y).toBeCloseTo(100 + t, 6);
         expect(c.z).toBeCloseTo(100, 6);
       }
+      // each side's bearing disc sits in its hole, with the slot the lid's pin goes into
+      const lidBack = m.parts.find((p) => p.label === 'lid back')!;
+      for (const side of ['left', 'right']) {
+        const disc = m.parts.find((p) => p.label === `hinge disc ${side}`)!;
+        expect(disc.holes).toHaveLength(1);
+        const d = boundsOf([disc.outline]);
+        const c = placePoint(disc.placement!, (d.minX + d.maxX) / 2, (d.minY + d.maxY) / 2, 0);
+        expect(c.y).toBeCloseTo(100 + t, 6);
+        expect(c.z).toBeCloseTo(100, 6);
+        // the pin tip: the lid back's outline points beyond the side walls, on this
+        // side, within the pin length of the axis (the neck above stays clear of the disc)
+        const pinh = Math.sqrt((0.9 * 2 * t) ** 2 - t ** 2);
+        const pin = lidBack.outline
+          .map((q) => placePoint(lidBack.placement!, q.x, q.y, t / 2))
+          .filter((q) => (side === 'left' ? q.x < -1e-6 : q.x > 100 + 1e-6))
+          .filter((q) => Math.hypot(q.y - (100 + t), q.z - 100) <= pinh + 1e-6);
+        expect(pin.length).toBeGreaterThan(0);
+        // every pin point lies inside the slot (in the disc's plane, within the slot rectangle)
+        const slot = disc.holes[0].map((q) => placePoint(disc.placement!, q.x, q.y, 0));
+        const ys = slot.map((q) => q.y);
+        const zs = slot.map((q) => q.z);
+        const inSlot = (q: { y: number; z: number }) => {
+          // slot is a rotated rectangle: test in its own axes
+          const [a, b, , d2] = slot;
+          const ux = b.y - a.y;
+          const uz = b.z - a.z;
+          const vx = d2.y - a.y;
+          const vz = d2.z - a.z;
+          const px = q.y - a.y;
+          const pz = q.z - a.z;
+          const s1 = (px * ux + pz * uz) / (ux * ux + uz * uz);
+          const s2 = (px * vx + pz * vz) / (vx * vx + vz * vz);
+          return s1 > -1e-6 && s1 < 1 + 1e-6 && s2 > -1e-6 && s2 < 1 + 1e-6;
+        };
+        expect(Math.max(...ys) - Math.min(...ys) + Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(0);
+        for (const q of pin) expect(inSlot(q), `${side} pin (${q.y.toFixed(2)}, ${q.z.toFixed(2)})`).toBe(true);
+      }
     });
   }
 });
