@@ -216,3 +216,43 @@ export const materialWithFloorGroup: ParamGroup = { ...materialGroup, params: [.
 
 /** Floor thickness in mm (the wall thickness when not set). */
 export const floorThickness = (v: ParamValues): number => Number(v.floor_thickness) || Number(v.thickness);
+
+export type HandleSide = 'front' | 'back' | 'left' | 'right';
+export const HANDLE_SIDES: HandleSide[] = ['front', 'back', 'left', 'right'];
+
+/**
+ * One collapsible group per wall for a handle hole like boxes.py's Crate:
+ * a rounded rectangle centred along the wall, `offset` below its top edge.
+ */
+export const handleGroups: ParamGroup[] = HANDLE_SIDES.map((side) => {
+  const on = (v: ParamValues) => Boolean(v[`handle_${side}`]);
+  const title = side[0].toUpperCase() + side.slice(1);
+  return {
+    id: `handle_${side}`,
+    title: `Handle: ${side}`,
+    collapsed: true,
+    params: [
+      { id: `handle_${side}`, label: `${title} handle`, type: 'boolean', default: false, help: 'Cut a handle hole into this wall' },
+      { id: `handle_${side}_offset`, label: 'Offset', type: 'number', default: 10, unit: 'mm', min: 0, max: 1000, step: 0.5, help: 'From the top edge down to the hole', showIf: on },
+      { id: `handle_${side}_width`, label: 'Width', type: 'number', default: 60, unit: 'mm', min: 1, max: 2000, step: 1, showIf: on },
+      { id: `handle_${side}_height`, label: 'Height', type: 'number', default: 25, unit: 'mm', min: 1, max: 1000, step: 0.5, showIf: on },
+      { id: `handle_${side}_radius`, label: 'Radius', type: 'number', default: 12.5, unit: 'mm', min: 0, max: 500, step: 0.5, help: 'Corner radius (half the height for round ends)', showIf: on },
+    ],
+  };
+});
+
+/**
+ * Callback for a wall's top edge (rectangularWall callback index 2, frame on
+ * the nominal top line with y pointing down into the wall) cutting the handle
+ * hole for `side`, or undefined when that side has none.
+ */
+export function handleHole(b: Boxes, v: ParamValues, side: HandleSide, length: number, height: number): (() => void) | undefined {
+  if (!v[`handle_${side}`]) return undefined;
+  const offset = Number(v[`handle_${side}_offset`]);
+  const w = Number(v[`handle_${side}_width`]);
+  const hh = Number(v[`handle_${side}_height`]);
+  const r = Number(v[`handle_${side}_radius`]);
+  if (w >= length) throw new Error(`The ${side} handle is wider than its wall (${Math.round(length)} mm)`);
+  if (offset + hh >= height) throw new Error(`The ${side} handle reaches below the floor: reduce its offset or height`);
+  return () => b.rectangularHole(length / 2, offset + hh / 2, w, hh, r);
+}

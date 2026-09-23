@@ -1,5 +1,17 @@
 import { Boxes, place, type EdgeSpec } from '../engine/boxes';
-import { dimParam, fingerJointGroup, fingerJointParams, floorThickness, materialWithFloorGroup, outsideParam, rowEngraving, rowEngravingGroup } from './common';
+import {
+  dimParam,
+  fingerJointGroup,
+  fingerJointParams,
+  floorThickness,
+  handleGroups,
+  handleHole,
+  materialWithFloorGroup,
+  outsideParam,
+  rowEngraving,
+  rowEngravingGroup,
+  type HandleSide,
+} from './common';
 import { bool, finishModel, num, type BoxModel, type GeneratorDef, type ParamValues } from './types';
 
 function build(v: ParamValues): BoxModel {
@@ -19,14 +31,16 @@ function build(v: ParamValues): BoxModel {
   const rows = rowEngraving(b, v);
   const fb = rows.sides === 'frontback' ? rows.rows(x, h) : undefined;
   const lr = rows.sides === 'sides' ? rows.rows(y, h) : undefined;
-  const walls: Array<[number, EdgeSpec[], string, ReturnType<typeof place.wallXZ>, (() => void) | undefined]> = [
-    [x, [bottom, 'F', 'F', 'F'], 'Wall 1', place.wallXZ(0, 0, 0), fb],
-    [x, [bottom, 'F', 'F', 'F'], 'Wall 3', place.wallXZ(0, y + t, 0), fb],
-    [y, [bottom, 'f', 'F', 'f'], 'Wall 2', place.wallYZ(-t, 0, 0), lr],
-    [y, [bottom, 'f', 'F', 'f'], 'Wall 4', place.wallYZ(x, 0, 0), lr],
+  // Wall 1 is the front, Wall 3 the back, Wall 2 the left and Wall 4 the right
+  const walls: Array<[number, EdgeSpec[], string, HandleSide, ReturnType<typeof place.wallXZ>, (() => void) | undefined]> = [
+    [x, [bottom, 'F', 'F', 'F'], 'Wall 1', 'front', place.wallXZ(0, 0, 0), fb],
+    [x, [bottom, 'F', 'F', 'F'], 'Wall 3', 'back', place.wallXZ(0, y + t, 0), fb],
+    [y, [bottom, 'f', 'F', 'f'], 'Wall 2', 'left', place.wallYZ(-t, 0, 0), lr],
+    [y, [bottom, 'f', 'F', 'f'], 'Wall 4', 'right', place.wallYZ(x, 0, 0), lr],
   ];
-  for (const [l, edges, label, placement, cb] of walls) {
-    const part = b.rectangularWall(l, h, edges, { label, callback: cb ? [cb] : undefined, placement });
+  for (const [l, edges, label, side, placement, cb] of walls) {
+    const handle = handleHole(b, v, side, l, h);
+    const part = b.rectangularWall(l, h, edges, { label, callback: [cb, null, handle], placement });
     if (cb) part.engraveFace = 'inner';
   }
   b.rectangularWall(x, y, 'ffff', { label: 'Top', placement: place.plateXY(0, 0, h) });
@@ -52,6 +66,7 @@ export const closedBox: GeneratorDef = {
         outsideParam,
       ],
     },
+    ...handleGroups,
     rowEngravingGroup,
     materialWithFloorGroup,
     fingerJointGroup,

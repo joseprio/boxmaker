@@ -19,6 +19,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
   or thinner material; the walls' bottom joints follow it.
 - **One sheet per material thickness**: parts of different thicknesses are laid out and exported
   separately (`<box>-3mm.svg`, `<box>-6mm.svg`, ...).
+- **Handles** (Universal, Closed and Open Box): a rounded handle hole per wall like boxes.py's Crate, with
+  its own offset from the top, width, height and corner radius on each side.
 - **Engraved rows** (Universal, Closed and Open Box): bands of a set width and spacing on the inside of
   two opposite walls, e.g. guides for CD storage.
 - **Engraved numbers** (Hinge Card Box): single-line strokes for vector engraving or merged outlines for

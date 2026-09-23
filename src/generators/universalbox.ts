@@ -7,12 +7,15 @@ import {
   fingerJointGroup,
   fingerJointParams,
   floorThickness,
+  handleGroups,
+  handleHole,
   materialWithFloorGroup,
   outsideParam,
   rowEngraving,
   rowEngravingGroup,
   stackableGroup,
   stackableParams,
+  type HandleSide,
   type RowEngraving,
 } from './common';
 import { bool, finishModel, num, str, type BoxModel, type GeneratorDef, type ParamGroup, type ParamValues } from './types';
@@ -129,6 +132,8 @@ export interface UniversalBoxParams {
   rows?: RowEngraving;
   /** floor material thickness, if not the walls' */
   floorThickness?: number;
+  /** handle hole callback for a wall `l` long and `h` high, if that side has one */
+  handles?: (side: HandleSide, l: number, h: number) => (() => void) | undefined;
 }
 
 /** Builds the four walls, floor and fixed top of a box; returns the inner dimensions used. */
@@ -149,8 +154,10 @@ export function buildUniversalBox(b: Boxes, p: UniversalBoxParams): { x: number;
   const ignoreWidths = [1, 6];
   const fb = p.rows?.sides === 'frontback' ? p.rows.rows(x, h) : undefined;
   const lr = p.rows?.sides === 'sides' ? p.rows.rows(y, h) : undefined;
-  const wall = (l: number, edges: EdgeSpec[], label: string, placement: Placement, rows?: () => void) => {
-    const part = b.rectangularWall(l, h, edges, { label, ignoreWidths, callback: rows ? [rows] : undefined, placement });
+  const wall = (l: number, edges: EdgeSpec[], label: HandleSide, placement: Placement, rows?: () => void) => {
+    // rows from the bottom edge's frame, the handle from the top edge's
+    const handle = p.handles?.(label, l, h);
+    const part = b.rectangularWall(l, h, edges, { label, ignoreWidths, callback: [rows, null, handle], placement });
     if (rows) part.engraveFace = 'inner';
   };
 
@@ -182,6 +189,7 @@ function build(v: ParamValues): BoxModel {
     outside: bool(v, 'outside'),
     rows: rowEngraving(b, v),
     floorThickness: floorThickness(v),
+    handles: (s, l, hh) => handleHole(b, v, s, l, hh),
   });
   if (topEdge === 'e') {
     new Lid(b, lidSettings(t, v)).draw({ x: dims.x, y: dims.y, zTop: dims.zTop });
@@ -225,6 +233,7 @@ export const universalBox: GeneratorDef = {
       ],
     },
     lidGroup,
+    ...handleGroups,
     rowEngravingGroup,
     materialWithFloorGroup,
     fingerJointGroup,
@@ -246,6 +255,7 @@ function buildOpen(v: ParamValues): BoxModel {
     outside: bool(v, 'outside'),
     rows: rowEngraving(b, v),
     floorThickness: floorThickness(v),
+    handles: (s, l, hh) => handleHole(b, v, s, l, hh),
   });
   return finishModel(b);
 }
@@ -266,6 +276,7 @@ export const openBox: GeneratorDef = {
         outsideParam,
       ],
     },
+    ...handleGroups,
     rowEngravingGroup,
     materialWithFloorGroup,
     fingerJointGroup,
