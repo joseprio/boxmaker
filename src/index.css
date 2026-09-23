@@ -445,49 +445,50 @@ h1 {
   -webkit-overflow-scrolling: touch;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  padding: 0 14px 24px;
+  padding: 12px 14px 0;
 }
 
-.panel-handle {
+/* export bar, pinned to the bottom of the options panel */
+.export {
   position: sticky;
-  top: 0;
+  bottom: 0;
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 0;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
-}
-
-.panel-handle > button {
-  display: none;
-}
-
-.export {
-  display: flex;
   gap: 8px;
+  margin: 16px -14px 0;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
 }
 
-.export button,
-.panel-footer button {
-  border: 1px solid var(--border);
-  background: var(--surface);
+.export-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.export-label small {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.export button {
+  min-width: 76px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
   padding: 8px 14px;
   border-radius: 8px;
   font-weight: 600;
 }
 
-.export button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-.export button.primary:hover {
+.export button:hover:not(:disabled) {
   background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 .export button:disabled {

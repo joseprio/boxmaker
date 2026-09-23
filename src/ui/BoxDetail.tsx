@@ -74,7 +74,6 @@ function BoxDetailInner({ def }: { def: GeneratorDef }) {
   const [values, setValues] = useState<ParamValues>(() => valuesFromSearch(def, searchParams));
   const [view, setView] = useState<'3d' | '2d'>('3d');
   const [explode, setExplode] = useState(0);
-  const [panelOpen, setPanelOpen] = useState(false);
 
   // keep the URL shareable (debounced)
   useEffect(() => {
@@ -150,28 +149,30 @@ function BoxDetailInner({ def }: { def: GeneratorDef }) {
           )}
         </section>
 
-        <aside className={`panel ${panelOpen ? 'open' : ''}`}>
-          <div className="panel-handle">
-            <button type="button" onClick={() => setPanelOpen(!panelOpen)} aria-expanded={panelOpen}>
-              {panelOpen ? 'Hide options' : 'Options'}
-            </button>
-            <div className="export">
-              <button type="button" className="primary" onClick={exportSVG} disabled={!shown} title={sheets.length > 1 ? 'One file per material thickness' : undefined}>
-                SVG
-                {sheets.length > 1 && ` ×${sheets.length}`}
-              </button>
-              <button type="button" onClick={exportDXF} disabled={!shown} title={sheets.length > 1 ? 'One file per material thickness' : undefined}>
-                DXF
-                {sheets.length > 1 && ` ×${sheets.length}`}
-              </button>
-            </div>
-          </div>
+        <aside className="panel">
           <p className="desc">{def.description}</p>
           <ParamForm groups={def.groups} values={values} onChange={onChange} />
           <div className="panel-footer">
             <button type="button" className="link" onClick={() => setValues(defaultValues(def))}>
               Reset to defaults
             </button>
+          </div>
+          <div className="export" role="group" aria-label="Export">
+            <span className="export-label">
+              Export to:
+              {sheets.length > 1 && <small>one file per thickness</small>}
+            </span>
+            {(
+              [
+                ['SVG', exportSVG],
+                ['DXF', exportDXF],
+              ] as const
+            ).map(([label, run]) => (
+              <button key={label} type="button" onClick={run} disabled={!shown} title={sheets.length > 1 ? 'One file per material thickness' : undefined}>
+                {label}
+                {sheets.length > 1 && ` ×${sheets.length}`}
+              </button>
+            ))}
           </div>
         </aside>
       </div>
