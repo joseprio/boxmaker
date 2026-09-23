@@ -59,6 +59,10 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Uneven Height Box | Different height at each corner, with a matching lid |
 | Skådis Pegboard | IKEA Skådis-style pegboard (staggered slots on a 20 mm grid) with spacer washers |
 | Skådis Stand | Legs that let a Skådis pegboard stand on its own, hooked into its slots; optional front feet |
+| Laptop Stand | X-shaped frame of two crossed triangles holding a laptop at an angle |
+| Display | Flyer or leaflet stand: a rounded back propped up by a shelf pushed through its slot |
+| Book Holder | Angled stand for books, files or cards, with optional back support and a ledge to hold a book open |
+| Phone Holder | Desk stand holding a phone between two tabs, its bottom left free for the charging cable |
 
 ## Development
 

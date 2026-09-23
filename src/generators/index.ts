@@ -1,5 +1,6 @@
 import { angledBox } from './angledbox';
 import { binTray } from './bintray';
+import { bookHolder } from './bookholder';
 import { cardBox } from './cardbox';
 import { closedBox } from './closedbox';
 import { displayShelf } from './displayshelf';
@@ -10,6 +11,8 @@ import { integratedHingeBox } from './integratedhingebox';
 import { magazineFile } from './magazinefile';
 import { penHolderBox } from './penholderbox';
 import { dividerTray } from './dividertray';
+import { display } from './display';
+import { laptopStand } from './laptopstand';
 import type { GeneratorDef } from './types';
 import { regularBox } from './regularbox';
 import { roundedBox } from './roundedbox';
@@ -23,6 +26,7 @@ import { typeTray } from './typetray';
 import { unevenHeightBox } from './unevenheightbox';
 import { openBox, universalBox } from './universalbox';
 import { pirateChest } from './piratechest';
+import { phoneHolder } from './phoneholder';
 
 export const generators: GeneratorDef[] = [
   universalBox,
@@ -50,6 +54,10 @@ export const generators: GeneratorDef[] = [
   unevenHeightBox,
   skadisBoard,
   skadisStand,
+  laptopStand,
+  display,
+  bookHolder,
+  phoneHolder,
 ];
 
 export function findGenerator(id: string | undefined): GeneratorDef | undefined {
