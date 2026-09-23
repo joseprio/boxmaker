@@ -2,14 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f6f2ea" />
-    <meta name="description" content="Generate laser-cut boxes with finger joints, entirely in your browser." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BoxMaker</title>
+    <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
+    <script>
+      // The app is published in dist/ (built from app.html). Keep the #/box/... part of
+      // shared links. On the dev server (localhost) go to the live app instead.
+      (function () {
+        var local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        location.replace((local ? 'app.html' : 'dist/index.html') + location.hash);
+      })();
+    </script>
+    <noscript><meta http-equiv="refresh" content="0; url=dist/index.html" /></noscript>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <p><a href="dist/index.html">Open BoxMaker</a></p>
   </body>
 </html>

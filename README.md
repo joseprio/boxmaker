@@ -5,6 +5,8 @@ geometry model of [boxes.py](https://github.com/florianfesti/boxes) by Florian F
 
 Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. No server, no uploads.
 
+**Use it online: [joseprio.github.io/boxmaker](https://joseprio.github.io/boxmaker/)**
+
 ## Features
 
 - **Catalog with 3D previews.** Each generator is rendered from three angles at build-defaults;
@@ -69,6 +71,11 @@ npm run build    # static build into dist/
 
 The build output in `dist/` is fully static — drop it on any static host. `base` is set to `./`
 and routing uses hash URLs, so it also works from a subdirectory or from `file://`.
+
+The app's page is `app.html` (the dev server opens it); the build writes it as `dist/index.html`.
+`dist/` is committed and served by GitHub Pages at `/dist/`, with the root `index.html` redirecting
+there (keeping `#/box/...` links), so **run `npm run build` and commit `dist/` before pushing** to
+update the live site.
 
 ## How it works
 
