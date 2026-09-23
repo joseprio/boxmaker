@@ -19,6 +19,7 @@ import { roundedBox } from './roundedbox';
 import { sideHingeBox } from './sidehingebox';
 import { skadisBoard } from './skadis';
 import { skadisStand } from './skadisstand';
+import { slidingDrawer } from './slidingdrawer';
 import { slidingLidBox } from './slidinglidbox';
 import { stackableBin } from './stackablebin';
 import { trayInsert } from './trayinsert';
@@ -39,6 +40,7 @@ export const generators: GeneratorDef[] = [
   cardBox,
   hingeCardBox,
   slidingLidBox,
+  slidingDrawer,
   hingeBox,
   integratedHingeBox,
   pirateChest,
