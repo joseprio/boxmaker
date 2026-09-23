@@ -56,6 +56,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
 | Uneven Height Box | Different height at each corner, with a matching lid |
 | Skådis Pegboard | IKEA Skådis-style pegboard (staggered slots on a 20 mm grid) with spacer washers |
+| Skådis Stand | Legs that let a Skådis pegboard stand on its own, hooked into its slots; optional front feet |
 
 ## Development
 

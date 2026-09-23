@@ -54,3 +54,45 @@ describe('skadis pegboard', () => {
     expect(sheet.width).toBeLessThan(380);
   });
 });
+
+describe('skadis stand', () => {
+  const stand = async (o: object = {}) => {
+    const { skadisStand } = await import('../generators/skadisstand');
+    return skadisStand.build({ ...defaultValues(skadisStand), ...o });
+  };
+
+  for (const o of [{}, { angle: 60 }, { angle: 90 }, { connectors: [2, 4, 6], extra_height_bottom: 10 }, { foot_front: 60 }]) {
+    it(`legs close and their tabs meet the slot rows ${JSON.stringify(o)}`, async () => {
+      const m = await stand(o);
+      const a = (((o as { angle?: number }).angle ?? 70) * Math.PI) / 180;
+      const hB = (o as { extra_height_bottom?: number }).extra_height_bottom ?? 0;
+      const cons = (o as { connectors?: number[] }).connectors ?? [1, 3];
+      const legs = m.parts.filter((p) => p.label.startsWith('leg'));
+      expect(legs).toHaveLength(2);
+      for (const leg of legs) {
+        // the board rests on the leg's front edge, a line from the origin at the angle
+        const d = { x: Math.cos(a), y: Math.sin(a) };
+        const n = { x: -Math.sin(a), y: Math.cos(a) };
+        const tabTips = leg.outline.filter((q) => Math.abs(q.x * n.x + q.y * n.y - 4.5) < 1e-6).map((q) => q.x * d.x + q.y * d.y);
+        tabTips.sort((p, q) => p - q);
+        expect(tabTips).toHaveLength(2 * cons.length);
+        // each tab is 10 mm long, centred on a slot row (rows every 20 mm from the board's bottom edge)
+        cons.forEach((c, i) => {
+          expect(tabTips[2 * i]).toBeCloseTo(hB + c * 20 - 5, 6);
+          expect(tabTips[2 * i + 1]).toBeCloseTo(hB + c * 20 + 5, 6);
+        });
+      }
+      if ((o as { foot_front?: number }).foot_front) {
+        const plates = m.parts.filter((p) => p.label.startsWith('front foot'));
+        expect(plates).toHaveLength(2);
+        for (const p of plates) expect(p.holes.length).toBeGreaterThan(0);
+        // the legs stand on the plates
+        expect(modelBounds(legs).min.z).toBeCloseTo(0, 6);
+      }
+    });
+  }
+
+  it('explains a foot too short for the height', async () => {
+    await expect(stand({ foot: 10, angle: 30 })).rejects.toThrow(/too short/);
+  });
+});

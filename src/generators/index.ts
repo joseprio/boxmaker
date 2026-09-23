@@ -15,6 +15,7 @@ import { regularBox } from './regularbox';
 import { roundedBox } from './roundedbox';
 import { sideHingeBox } from './sidehingebox';
 import { skadisBoard } from './skadis';
+import { skadisStand } from './skadisstand';
 import { slidingLidBox } from './slidinglidbox';
 import { stackableBin } from './stackablebin';
 import { trayInsert } from './trayinsert';
@@ -48,6 +49,7 @@ export const generators: GeneratorDef[] = [
   magazineFile,
   unevenHeightBox,
   skadisBoard,
+  skadisStand,
 ];
 
 export function findGenerator(id: string | undefined): GeneratorDef | undefined {
