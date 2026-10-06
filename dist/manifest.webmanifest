@@ -1,0 +1,13 @@
+{
+  "name": "BoxMaker",
+  "short_name": "BoxMaker",
+  "description": "Generate laser-cut boxes with finger joints, entirely in your browser.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f2ea",
+  "theme_color": "#f6f2ea",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
