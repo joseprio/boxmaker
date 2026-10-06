@@ -41,6 +41,8 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Divider Tray | Slotted side pieces holding removable (optionally leaning) dividers |
 | Pen Holder Box | Two plates of pen holes, one under the rim and one lower down, with engraved cap rings |
 | Tray Insert | Interlocking divider grid without floor or walls, to fit into an existing box |
+| Gridfinity Baseplate | Plate with an opening per 42 mm Gridfinity cell; optional solid bottom, magnet holes and walls |
+| Gridfinity Bin | Open bin sized to the Gridfinity grid with compartments and feet that drop into the baseplate |
 | Card Box | Playing card box with a sliding lid and finger notches |
 | Hinge Card Box | Card box with a separate lid on its own cabinet hinge for every deck; optional engraved numbers |
 | Sliding Drawer | Case with sliding drawers: a single drawer or a grid, with finger-pull fronts |

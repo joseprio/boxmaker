@@ -5,6 +5,7 @@ import { cardBox } from './cardbox';
 import { closedBox } from './closedbox';
 import { displayShelf } from './displayshelf';
 import { flexBox } from './flexbox';
+import { gridfinityBase, gridfinityBin } from './gridfinity';
 import { hingeBox } from './hingebox';
 import { hingeCardBox } from './hingecardbox';
 import { integratedHingeBox } from './integratedhingebox';
@@ -36,6 +37,8 @@ export const generators: GeneratorDef[] = [
   typeTray,
   dividerTray,
   trayInsert,
+  gridfinityBase,
+  gridfinityBin,
   penHolderBox,
   cardBox,
   hingeCardBox,
