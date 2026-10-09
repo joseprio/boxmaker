@@ -9,6 +9,7 @@ import { gridfinityBase, gridfinityBin } from './gridfinity';
 import { hingeBox } from './hingebox';
 import { hingeCardBox } from './hingecardbox';
 import { integratedHingeBox } from './integratedhingebox';
+import { kerfTest } from './kerftest';
 import { magazineFile } from './magazinefile';
 import { penHolderBox } from './penholderbox';
 import { dividerTray } from './dividertray';
@@ -63,6 +64,7 @@ export const generators: GeneratorDef[] = [
   display,
   bookHolder,
   phoneHolder,
+  kerfTest,
 ];
 
 export function findGenerator(id: string | undefined): GeneratorDef | undefined {

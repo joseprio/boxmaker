@@ -74,8 +74,9 @@ export function layoutParts(parts: Part[], spacing = 3, margin = 5): Sheet {
   return best ?? { width: 2 * margin, height: 2 * margin, parts: [] };
 }
 
-/** Kerf-compensated contours for a part: outline grown, holes shrunk. */
+/** Kerf-compensated contours for a part: outline grown, holes shrunk. The part's own burn wins over `burn`. */
 export function cutContours(part: Part, burn: number): { outline: Vec2[]; holes: Vec2[][] } {
+  burn = part.burn ?? burn;
   const outline = offsetPolygon(part.outline, burn);
   const holes = part.holes.map((h) => {
     const cw = signedArea(h) < 0 ? h : [...h].reverse();

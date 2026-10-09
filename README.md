@@ -66,6 +66,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Display | Flyer or leaflet stand: a rounded back propped up by a shelf pushed through its slot |
 | Book Holder | Angled stand for books, files or cards, with optional back support and a ledge to hold a book open |
 | Phone Holder | Desk stand holding a phone between two tabs, its bottom left free for the charging cable |
+| Kerf Test | Strip of finger-jointed tab and slot pairs, each cut with a different burn or finger play, labelled with its value |
 
 ## Development
 

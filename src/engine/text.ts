@@ -2,13 +2,13 @@ import polygonClipping, { type MultiPolygon, type Polygon } from 'polygon-clippi
 import { signedArea, type Vec2 } from './geometry';
 
 /**
- * A small single-stroke digit font for engraving numbers. Glyphs are drawn on
+ * A small single-stroke digit font (plus a decimal point) for engraving numbers. Glyphs are drawn on
  * a 6 x 10 grid (y up, baseline at 0) with the stroke centre lines kept 0.6
  * inside the box, so outlines up to 1.2 grid units wide stay within it.
  */
 const GRID_H = 10;
 const GLYPH_W = 6;
-const ADVANCE = 7.6;
+const GAP = 1.6; // between glyph boxes
 
 /** Points on an elliptical arc from a0 to a1 degrees (either direction). */
 function arc(cx: number, cy: number, rx: number, ry: number, a0: number, a1: number): Vec2[] {
@@ -45,7 +45,14 @@ const GLYPHS: Record<string, Vec2[][]> = {
   '7': [[p(0.6, 9.4), p(5.4, 9.4), p(2.2, 0.6)]],
   '8': [arc(3, 7.2, 2.0, 2.2, -90, 270), arc(3, 2.8, 2.4, 2.2, 90, 450)],
   '9': six.map((s) => s.map((q) => p(GLYPH_W - q.x, GRID_H - q.y))),
+  '.': [arc(1.1, 1.1, 0.5, 0.5, 0, 360)],
 };
+
+/** Glyphs narrower than GLYPH_W. */
+const NARROW: Record<string, number> = { '.': 2.2 };
+const glyphWidth = (c: string) => NARROW[c] ?? GLYPH_W;
+/** Width of a run of characters in grid units. */
+const runWidth = (chars: string[]) => (chars.length ? chars.reduce((w, c) => w + glyphWidth(c), 0) + (chars.length - 1) * GAP : 0);
 
 /** Characters the font can draw. */
 export const ENGRAVE_CHARS = Object.keys(GLYPHS).join('');
@@ -57,21 +64,20 @@ export const ENGRAVE_CHARS = Object.keys(GLYPHS).join('');
 export function textStrokes(text: string, height: number): Vec2[][] {
   const s = height / GRID_H;
   const chars = [...text];
-  const width = chars.length ? (chars.length - 1) * ADVANCE + GLYPH_W : 0;
+  const width = runWidth(chars);
   const out: Vec2[][] = [];
-  chars.forEach((c, i) => {
+  let x0 = -width / 2;
+  for (const c of chars) {
     const g = GLYPHS[c];
-    if (!g) return;
-    const x0 = i * ADVANCE - width / 2;
-    for (const stroke of g) out.push(stroke.map((q) => p((x0 + q.x) * s, (q.y - GRID_H / 2) * s)));
-  });
+    if (g) for (const stroke of g) out.push(stroke.map((q) => p((x0 + q.x) * s, (q.y - GRID_H / 2) * s)));
+    x0 += glyphWidth(c) + GAP;
+  }
   return out;
 }
 
 /** Width of `text` set `height` mm tall. */
 export function textWidth(text: string, height: number): number {
-  const n = [...text].length;
-  return n ? (((n - 1) * ADVANCE + GLYPH_W) * height) / GRID_H : 0;
+  return (runWidth([...text]) * height) / GRID_H;
 }
 
 /** Stroke width that keeps outlines inside the glyph box, for a given text height. */

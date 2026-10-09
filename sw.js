@@ -1,6 +1,6 @@
 // Generated at build time by vite.config.ts.
-const CACHE = "boxmaker-69100e0e53dc";
-const PRECACHE = ["./","./dist/","./dist/assets/app-CQEuuy3C.js","./dist/assets/app-DOlPyI7k.css","./dist/favicon.svg","./dist/index.html","./dist/manifest.webmanifest","./index.html","./public/favicon.svg"];
+const CACHE = "boxmaker-8667c36f7de4";
+const PRECACHE = ["./","./dist/","./dist/assets/app-B7uKfbyM.js","./dist/assets/app-DOlPyI7k.css","./dist/favicon.svg","./dist/index.html","./dist/manifest.webmanifest","./index.html","./public/favicon.svg"];
 const APP_PAGE = "./dist/index.html";
 
 self.addEventListener('install', (event) => {

@@ -136,6 +136,8 @@ export interface Part {
   /** Open cut lines inside the part (e.g. flex hinge cuts) - cut like contours. */
   cuts: Vec2[][];
   thickness: number;
+  /** kerf compensation for this part, if not the model's (e.g. a kerf test strip) */
+  burn?: number;
   placement?: Placement;
   /** Logical group for the viewer (e.g. "box", "lid", "divider"). */
   group: string;
