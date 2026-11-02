@@ -1,5 +1,7 @@
 import { angledBox } from './angledbox';
 import { binTray } from './bintray';
+import { bottleHolder } from './bottleholder';
+import { bottleOrganizer } from './bottleorganizer';
 import { bookHolder } from './bookholder';
 import { cardBox } from './cardbox';
 import { closedBox } from './closedbox';
@@ -41,6 +43,8 @@ export const generators: GeneratorDef[] = [
   gridfinityBase,
   gridfinityBin,
   penHolderBox,
+  bottleHolder,
+  bottleOrganizer,
   cardBox,
   hingeCardBox,
   slidingLidBox,
