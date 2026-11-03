@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { bookHolder } from '../generators/bookholder';
 import { display } from '../generators/display';
 import { laptopStand } from '../generators/laptopstand';
-import { phoneHolder } from '../generators/phoneholder';
+import { deviceHolder } from '../generators/deviceholder';
 import { defaultValues } from '../generators/types';
 import { modelBounds } from './bounds3d';
 import { boundsOf } from './geometry';
@@ -117,12 +117,12 @@ describe('book holder', () => {
   });
 });
 
-describe('phone holder', () => {
-  const build = (o: object = {}) => phoneHolder.build({ ...defaultValues(phoneHolder), ...o });
+describe('device holder', () => {
+  const build = (o: object = {}) => deviceHolder.build({ ...defaultValues(deviceHolder), ...o });
 
   for (const o of [{}, { angle: 10 }, { angle: 50, phone_width: 90, bottom_support_spacing: 30, thickness: 4 }]) {
     it(`parts close and fit together ${JSON.stringify(o)}`, () => {
-      const v: Record<string, unknown> = { ...defaultValues(phoneHolder), ...o };
+      const v: Record<string, unknown> = { ...defaultValues(deviceHolder), ...o };
       const t = Number(v.thickness);
       const W = Number(v.phone_width);
       const h = Number(v.phone_height) + Number(v.bottom_margin);
@@ -156,7 +156,7 @@ describe('phone holder', () => {
     });
   }
 
-  it('explains tabs longer than the phone', () => {
-    expect(() => build({ tab_size: 200 })).toThrow(/longer than the phone/);
+  it('explains tabs longer than the device', () => {
+    expect(() => build({ tab_size: 200 })).toThrow(/longer than the device/);
   });
 });

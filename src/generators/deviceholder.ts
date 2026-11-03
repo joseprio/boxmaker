@@ -41,10 +41,10 @@ function build(v: ParamValues): BoxModel {
   const spacing = Math.max(num(v, 'bottom_support_spacing'), 2 * CABLE_R);
   const h = num(v, 'phone_height') + sm;
   if (angle <= 0 || angle >= 90) throw new Error('The angle must be between 0 and 90 degrees');
-  if (tl > h - sm) throw new Error('The tabs can’t be longer than the phone');
-  if (tl < 2 * depth) throw new Error('The tabs must be at least twice the phone depth');
+  if (tl > h - sm) throw new Error('The tabs can’t be longer than the device');
+  if (tl < 2 * depth) throw new Error('The tabs must be at least twice the device depth');
   const side = (W - spacing - 2 * t) / 2;
-  if (side <= 0) throw new Error('The phone is too narrow for the bottom support spacing');
+  if (side <= 0) throw new Error('The device is too narrow for the bottom support spacing');
 
   const th = rad(angle);
   const standDepth = h * Math.sin(th);
@@ -73,7 +73,7 @@ function build(v: ParamValues): BoxModel {
       t,
     );
 
-  // box space: X across the phone, the front plate rises from Y = 0 on the floor, leaning
+  // box space: X across the device, the front plate rises from Y = 0 on the floor, leaning
   // back towards +Y; its back face is on the side walls' slope
   const up = { x: 0, y: Math.sin(th), z: Math.cos(th) };
   b.rectangularWall(W, h, [bottomEdge(sm), sideEdge(false), 'e', sideEdge(true)], {
@@ -92,7 +92,7 @@ function build(v: ParamValues): BoxModel {
     placement: { origin: { x: 0, y: standDepth + t, z: 0 }, u: { x: 1, y: 0, z: 0 }, v: { x: 0, y: 0, z: 1 } },
   });
 
-  // side walls: right triangles, the slope with a tab each side of the phone
+  // side walls: right triangles, the slope with a tab each side of the device
   const alpha = deg(Math.atan2(standHeight, standDepth));
   const sideWall = () => {
     b.edge(standDepth);
@@ -111,7 +111,7 @@ function build(v: ParamValues): BoxModel {
     b.freePart(sideWall, { label, placement: { origin: { x: x0, y: 0, z: 0 }, u: { x: 0, y: 1, z: 0 }, v: { x: 0, y: 0, z: 1 } } });
   }
 
-  // bottom supports: behind the front plate through its slots, hooking under the phone in front
+  // bottom supports: behind the front plate through its slots, hooking under the device in front
   const fh = sm + tl;
   const floor = fh * Math.sin(th);
   const angled = fh * Math.cos(th);
@@ -138,22 +138,22 @@ function build(v: ParamValues): BoxModel {
   return finishModel(b);
 }
 
-export const phoneHolder: GeneratorDef = {
-  id: 'phoneholder',
-  name: 'Phone Holder',
+export const deviceHolder: GeneratorDef = {
+  id: 'deviceholder',
+  name: 'Device Holder',
   category: 'Misc',
-  description: 'Smartphone desk stand holding the phone between two tabs, leaving its bottom free for a charger, headphones and the mic.',
+  description: 'Desk stand for a phone, tablet or e-reader, holding the device between two tabs and leaving its bottom free for a charger, headphones and the mic.',
   groups: [
     {
-      id: 'phone',
-      title: 'Phone',
+      id: 'device',
+      title: 'Device',
       params: [
-        { id: 'phone_height', label: 'Phone height', type: 'number', default: 142, unit: 'mm', min: 40, max: 400, step: 1 },
-        { id: 'phone_width', label: 'Phone width', type: 'number', default: 73, unit: 'mm', min: 30, max: 300, step: 1 },
-        { id: 'phone_depth', label: 'Phone depth', type: 'number', default: 11, unit: 'mm', min: 1, max: 50, step: 0.5, help: 'Depth of the bottom supports’ hook and of the side tabs; at least the material thickness' },
-        { id: 'angle', label: 'Angle', type: 'number', default: 25, unit: 'deg', min: 1, max: 80, step: 1, help: 'Lean of the phone; 0 is vertical' },
-        { id: 'bottom_margin', label: 'Bottom margin', type: 'number', default: 30, unit: 'mm', min: 5, max: 200, step: 1, help: 'Height of the support below the phone' },
-        { id: 'tab_size', label: 'Tab length', type: 'number', default: 76, unit: 'mm', min: 5, max: 400, step: 1, help: 'Length of the tabs holding the phone' },
+        { id: 'phone_height', label: 'Device height', type: 'number', default: 142, unit: 'mm', min: 40, max: 400, step: 1 },
+        { id: 'phone_width', label: 'Device width', type: 'number', default: 73, unit: 'mm', min: 30, max: 300, step: 1 },
+        { id: 'phone_depth', label: 'Device depth', type: 'number', default: 11, unit: 'mm', min: 1, max: 50, step: 0.5, help: 'Depth of the bottom supports’ hook and of the side tabs; at least the material thickness' },
+        { id: 'angle', label: 'Angle', type: 'number', default: 25, unit: 'deg', min: 1, max: 80, step: 1, help: 'Lean of the device; 0 is vertical' },
+        { id: 'bottom_margin', label: 'Bottom margin', type: 'number', default: 30, unit: 'mm', min: 5, max: 200, step: 1, help: 'Height of the support below the device' },
+        { id: 'tab_size', label: 'Tab length', type: 'number', default: 76, unit: 'mm', min: 5, max: 400, step: 1, help: 'Length of the tabs holding the device' },
         { id: 'bottom_support_spacing', label: 'Support spacing', type: 'number', default: 16, unit: 'mm', min: 5, max: 200, step: 1, help: 'Gap between the two bottom supports, wide enough for the charging cable' },
       ],
     },

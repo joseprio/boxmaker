@@ -20,6 +20,7 @@ import { laptopStand } from './laptopstand';
 import type { GeneratorDef } from './types';
 import { regularBox } from './regularbox';
 import { roundedBox } from './roundedbox';
+import { shelves } from './shelves';
 import { sideHingeBox } from './sidehingebox';
 import { skadisBoard } from './skadis';
 import { skadisStand } from './skadisstand';
@@ -31,7 +32,7 @@ import { typeTray } from './typetray';
 import { unevenHeightBox } from './unevenheightbox';
 import { openBox, universalBox } from './universalbox';
 import { pirateChest } from './piratechest';
-import { phoneHolder } from './phoneholder';
+import { deviceHolder } from './deviceholder';
 
 export const generators: GeneratorDef[] = [
   universalBox,
@@ -58,6 +59,7 @@ export const generators: GeneratorDef[] = [
   roundedBox,
   flexBox,
   displayShelf,
+  shelves,
   stackableBin,
   binTray,
   magazineFile,
@@ -67,10 +69,14 @@ export const generators: GeneratorDef[] = [
   laptopStand,
   display,
   bookHolder,
-  phoneHolder,
+  deviceHolder,
   kerfTest,
 ];
 
+/** Former ids, so links shared before a rename still open the generator. */
+const renamedIds: Record<string, string> = { phoneholder: 'deviceholder' };
+
 export function findGenerator(id: string | undefined): GeneratorDef | undefined {
-  return generators.find((g) => g.id === id);
+  const current = id !== undefined ? (renamedIds[id] ?? id) : id;
+  return generators.find((g) => g.id === current);
 }

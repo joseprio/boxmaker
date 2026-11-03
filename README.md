@@ -58,6 +58,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Rounded Box | Rounded vertical edges: a flex wall wraps round the floor and top, optional shelves and lid |
 | Flex Box | Living-hinge box whose wall wraps round to form the lid, closed with a latch |
 | Display Shelf | Slanted shelves with front lips and dividers |
+| Shelves | Standing shelf unit: sides with a rounded top and optional windows, any number of shelves, optional back |
 | Stackable Bin | Open bin with a slanted front that stacks on its siblings |
 | Magazine File | Tall at the back, low at the front, sides curving between; optional wall mounting holes |
 | Bin Tray | Wall-mounted upright type tray with sloped retainers and keyhole mounts |
@@ -67,7 +68,7 @@ Everything — geometry, 3D preview, SVG/DXF export — happens in the browser. 
 | Laptop Stand | X-shaped frame of two crossed triangles holding a laptop at an angle |
 | Display | Flyer or leaflet stand: a rounded back propped up by a shelf pushed through its slot |
 | Book Holder | Angled stand for books, files or cards, with optional back support and a ledge to hold a book open |
-| Phone Holder | Desk stand holding a phone between two tabs, its bottom left free for the charging cable |
+| Device Holder | Desk stand holding a phone, tablet or e-reader between two tabs, its bottom left free for the charging cable |
 | Kerf Test | Strip of finger-jointed tab and slot pairs, each cut with a different burn or finger play, labelled with its value |
 
 ## Development
