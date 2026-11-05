@@ -3,6 +3,7 @@ import { gridfinityBase, gridfinityBin } from '../generators/gridfinity';
 import { defaultValues } from '../generators/types';
 import { modelBounds } from './bounds3d';
 import { boundsOf } from './geometry';
+import { placePoint } from './part';
 
 const base = (o: object = {}) => gridfinityBase.build({ ...defaultValues(gridfinityBase), ...o });
 const bin = (o: object = {}) => gridfinityBin.build({ ...defaultValues(gridfinityBin), ...o });
@@ -78,6 +79,55 @@ describe('gridfinity bin', () => {
       expect(fb.max.z).toBeLessThanOrEqual(body.min.z + 1e-9);
       expect(fb.min.z).toBeGreaterThanOrEqual(body.min.z - 2 * t - 1e-9);
     }
+  });
+
+  describe('magnet holes', () => {
+    const feetOf = (m: ReturnType<typeof bin>) => m.parts.filter((p) => p.label.startsWith('foot'));
+    // hole centres in box space, rounded so they can be compared as a set
+    const centres = (parts: ReturnType<typeof feetOf>, ox = 0, oy = 0) =>
+      parts
+        .flatMap((p) =>
+          p.holes.map((hl) => {
+            const c = size([hl]);
+            const q = placePoint(p.placement!, c.cx, c.cy, 0);
+            return `${(q.x - ox).toFixed(3)},${(q.y - oy).toFixed(3)}`;
+          }),
+        )
+        .sort();
+
+    it('has none by default', () => {
+      expect(feetOf(bin()).every((f) => f.holes.length === 0)).toBe(true);
+    });
+
+    it('line up with the magnet holes of the baseplate', () => {
+      for (const opening_radius of [2, 0]) {
+        const m = bin({ x: 3, y: 2, magnets: true, opening_radius });
+        const body = modelBounds(m.parts.filter((p) => p.group !== 'extra'));
+        // the cell grid starts 0.25 mm outside the bin
+        const feet = centres(feetOf(m), body.min.x - 0.25, body.min.y - 0.25);
+        expect(feet).toHaveLength(3 * 2 * 4);
+        const plate = base({ x: 3, y: 2, magnets: true, opening_radius }).parts.filter((p) => p.label === 'bottom');
+        expect(feet).toEqual(centres(plate));
+      }
+    });
+
+    it('go through every pad of the stack, leaving the floor closed', () => {
+      const m = bin({ x: 1, y: 1, layers: 2, magnets: true, magnet_d: 6 });
+      const feet = feetOf(m);
+      expect(feet).toHaveLength(2);
+      for (const f of feet) {
+        expect(f.holes).toHaveLength(4);
+        expect(size([f.holes[0]]).w).toBeCloseTo(6, 3);
+      }
+      expect(centres([feet[0]])).toEqual(centres([feet[1]]));
+      expect(m.parts.filter((p) => p.group !== 'extra').flatMap((p) => p.holes.map((hl) => size([hl]).w))).not.toContain(6);
+    });
+
+    it('are refused when they do not fit in the feet', () => {
+      expect(() => bin({ magnets: true, magnet_d: 12 })).toThrow('do not fit');
+      expect(() => bin({ magnets: true, opening_radius: 16 })).toThrow('do not fit');
+      expect(() => bin({ magnet_d: 12 })).not.toThrow();
+    });
   });
 
   it('adds dividers for the compartments', () => {

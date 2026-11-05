@@ -139,6 +139,14 @@ function buildBin(v: ParamValues): BoxModel {
   const ly = ny * pitch - BIN_GAP;
   const cx = Math.max(1, Math.round(num(v, 'cx')));
   const cy = Math.max(1, Math.round(num(v, 'cy')));
+  const magnetR = bool(v, 'magnets') ? num(v, 'magnet_d') / 2 : 0;
+  const magnetD = (pitch / 42) * MAGNET_SPACING;
+  if (magnetR) {
+    // distance from a magnet hole's centre to the rounded square outline of the foot, negative inside
+    const q = magnetD / 2 - foot / 2 + r;
+    const inside = Math.hypot(Math.max(q, 0), Math.max(q, 0)) + Math.min(q, 0) - r;
+    if (inside + magnetR >= 0) throw new Error('The magnet holes do not fit in the feet');
+  }
 
   // the body is a Type Tray measured from the outside
   const model = typeTray.build({
@@ -167,6 +175,14 @@ function buildBin(v: ParamValues): BoxModel {
           label: `foot ${i * ny + j + 1}${layers > 1 ? `.${k + 1}` : ''}`,
           group: 'extra',
           extendCorners: false,
+          // through every pad of the stack, so the floor closes the pocket; the callback's frame starts r along the edge
+          callback: magnetR
+            ? [
+                () => {
+                  for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) b.hole(foot / 2 - r + (sx * magnetD) / 2, foot / 2 + (sy * magnetD) / 2, magnetR);
+                },
+              ]
+            : undefined,
           placement: place.plateXY(fx, fy, -t - (k + 1) * t),
         });
       }
@@ -180,7 +196,7 @@ export const gridfinityBin: GeneratorDef = {
   name: 'Gridfinity Bin',
   category: 'Tray',
   description:
-    'Open bin sized to the Gridfinity grid (42 mm cells, 7 mm height units), with compartments and a stack of pads under each cell that drop into a Gridfinity Baseplate.',
+    'Open bin sized to the Gridfinity grid (42 mm cells, 7 mm height units), with compartments and a stack of pads under each cell, with optional magnet holes, that drop into a Gridfinity Baseplate.',
   groups: [
     {
       id: 'dims',
@@ -203,6 +219,8 @@ export const gridfinityBin: GeneratorDef = {
           ],
         },
         { id: 'clearance', label: 'Foot clearance', type: 'number', default: 0.5, unit: 'mm', min: 0, max: 5, step: 0.1, help: 'How much smaller the feet are than the baseplate openings' },
+        { id: 'magnets', label: 'Magnet holes', type: 'boolean', default: false, help: 'Four holes per foot, at the same positions as the magnet holes in the baseplate; they go through all the pads, so the pocket is as deep as the stack' },
+        { id: 'magnet_d', label: 'Magnet hole diameter', type: 'number', default: 6.5, unit: 'mm', min: 1, max: 20, step: 0.1, showIf: (v) => Boolean(v.magnets) },
       ],
     },
     gridGroup,
